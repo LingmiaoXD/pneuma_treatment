@@ -26,7 +26,7 @@ Pillow==10.3.0
 pyparsing==3.1.1
 pyproj==3.6.1
 PyQt5==5.15.10
-PyQt5-Qt5==5.15.11
+PyQt5-Qt5
 PyQt5-sip==12.13.0
 python-dateutil==2.8.2
 pytz==2023.3.post1
@@ -37,7 +37,6 @@ scipy==1.11.4
 seaborn==0.13.0
 Shapely==1.8.0
 six==1.16.0
-sklearn==0.0.post11
 snuggs==1.4.7
 threadpoolctl==3.2.0
 tqdm==4.66.3

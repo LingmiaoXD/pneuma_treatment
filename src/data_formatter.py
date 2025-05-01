@@ -4,7 +4,7 @@ import glob
 from tqdm import tqdm
 
 # Specify the paths to the raw data from a single day.
-PATH = "../data/complete_data/raw_data"
+PATH = "../data/raw_data"
 
 from tempfile import TemporaryFile
 
@@ -17,7 +17,7 @@ def list_to_df(temp):
     v = []
     frame = []
     for i in range(
-        7, len(temp) - 6, 6
+        3, len(temp) - 6, 6
     ):  # start range from 3 for sample, and 7 for complete. Check this to make it consistent with the format of raw data
         lon.append(temp[i + 2])  # check lat
         lat.append(temp[i + 1])  # check lon
@@ -26,7 +26,7 @@ def list_to_df(temp):
         a_y.append(temp[i + 5])
         frame.append(temp[i + 6])
     df_meta = pd.DataFrame(
-        {"id": [temp[0]], "type": [temp[1]], "dist": [temp[6]], "avg_speed": [temp[7]]}
+        {"id": [temp[0]], "type": [temp[1]], "dist": [temp[2]], "avg_speed": [temp[3]]}
     )
     df_trajectory = pd.DataFrame(
         {
@@ -66,11 +66,9 @@ if __name__ == "__main__":
         print(filename)
         list_meta, list_trajectory = write_list(file)
         # save meta file
-        pd.concat(list_meta).to_csv(
-            "../data/long/meta_" + filename + ".csv", index=None
-        )
+        pd.concat(list_meta).to_csv("../data/ok_data/meta_" + filename + ".csv", index=None)
 
         # save trajectory data
         pd.concat(list_trajectory).to_csv(
-            "../data/long/" + filename + ".csv", index=None
+            "../data/ok_data/" + filename + ".csv", index=None
         )
