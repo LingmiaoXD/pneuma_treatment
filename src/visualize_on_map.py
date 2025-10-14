@@ -31,7 +31,7 @@ def series_to_colors(s, cmap='YlOrRd'):
     return s, color_map
 
 class uav_traffic_monitoring:
-    start_time
+    pass
 
 def uav_range(frame_id, traj, w, h):
     '''
@@ -41,11 +41,13 @@ def uav_range(frame_id, traj, w, h):
     :param h: 监视框的高
     :return:
     '''
+    pass
 
 
 
 # change the path to the data that you want to visualize
-df = pd.read_csv('../data/ok_data/0830.csv')
+df = pd.read_csv('../data/ok_data/d210240830.csv')
+#TODO: 考虑meta数据里的车型，把车型也在图中显示
 
 # Starting point of the time sequence
 frame = 0
@@ -107,7 +109,7 @@ while frame < df.frame.max():
     plt.tight_layout()
     # resolution of the images can be adjusted using dpi, 
     # which will also effect the filesize.
-    plt.savefig("../plots/map_visualization_10240830/"+str(int(frame*2))+".png", dpi=100)
+    plt.savefig("../plots/map_visualization_d2_10240830/"+str(int(frame*2))+".png", dpi=100)
     plt.close()
     # Interval between the time sequence
     frame+=0.5

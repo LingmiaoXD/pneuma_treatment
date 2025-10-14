@@ -1,4 +1,6 @@
 data/derived/*
+data/ok_data/*
+data/raw_data/*
 plots/*
 .pneuma_env/
 !data/derived/.gitkeep 
