@@ -5,10 +5,18 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 import utm
 from sklearn.decomposition import PCA
 from shapely.geometry import Point, LineString
 from geopandas import GeoDataFrame
+
+# 配置中文字体支持
+# Windows系统常用字体：SimHei（黑体）、Microsoft YaHei（微软雅黑）
+# matplotlib会自动选择列表中第一个可用的字体
+plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'DejaVu Sans']
+# 解决负号显示问题
+plt.rcParams['axes.unicode_minus'] = False
 
 SIZE = 20
 plt.rc('font', size=SIZE)
