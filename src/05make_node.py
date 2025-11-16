@@ -34,15 +34,15 @@ from scipy.spatial import cKDTree
 from collections import defaultdict
 
 
-def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
+def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     """
     主函数
 
     参数:
         lane_shp_path: str, 车道段面要素 Shapefile 路径
-        traj_csv_path: str, 轨迹 CSV 路径，含 x, y, vehicle_id, timestamp
+        traj_csv_path: str, 轨迹 CSV 路径，含 id, frame, lon, lat 等字段
         output_json_path: str, 输出 JSON 文件路径
-        crs: str, 投影坐标系（用于距离计算），默认 UTM Zone 50N
+        crs: str, 投影坐标系（用于距离计算），希腊地区默认 UTM Zone 34N
     """
     print("🚀 开始构建道路图结构...")
 
@@ -55,9 +55,9 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
         print(f"⚠️ 原始数据为地理坐标系，正在重投影到 {crs} ...")
         lanes_gdf = lanes_gdf.to_crs(crs)
 
-    # 设置 lane_id 为字符串
-    lanes_gdf['lane_id'] = lanes_gdf['lane_id'].astype(str)
-    lanes_gdf.set_index('lane_id', inplace=True)
+    # 设置 FID 为字符串
+    lanes_gdf['fid'] = lanes_gdf['fid'].astype(str)
+    lanes_gdf.set_index('fid', inplace=True)
 
     # 添加中心点列
     lanes_gdf['center_point'] = lanes_gdf.centroid
@@ -70,7 +70,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
     print("🔗 正在构建 direct（前后直联）连接...")
     direct_connections = defaultdict(list)
 
-    for road_id, group in lanes_gdf.groupby('road_line_id'):
+    for road_id, group in lanes_gdf.groupby('join_fid'):
         if len(group) <= 1:
             continue
 
@@ -113,14 +113,26 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
                 continue
             neighbor_id = idx_to_id[j]
             # 排除同一路线上的（那是 direct）
-            if row['road_line_id'] == lanes_gdf.loc[neighbor_id]['road_line_id']:
+            if row['join_fid'] == lanes_gdf.loc[neighbor_id]['join_fid']:
                 continue
             near_connections[lid].append(neighbor_id)
 
     # ------------------- 使用轨迹验证 near -------------------
     print("🔍 正在使用轨迹数据验证 near 连接...")
     traj_df = pd.read_csv(traj_csv_path)
-    traj_df = traj_df.sort_values(["vehicle_id", "timestamp"])
+    traj_df = traj_df.sort_values(["id", "frame"])
+
+    # 如果轨迹中没有 lane_id_hint，先匹配最近车道
+    if 'lane_id_hint' not in traj_df.columns:
+        print("📎 轨迹未标注 lane_id，正在匹配最近车道...")
+        def snap_to_lane(row):
+            pt = Point(row['lon'], row['lat'])
+            # 转换为投影坐标系以计算距离
+            pt_gdf = gpd.GeoDataFrame([1], geometry=[pt], crs="EPSG:4326")
+            pt_gdf = pt_gdf.to_crs(crs)
+            dists = lanes_gdf.distance(pt_gdf.geometry.iloc[0])
+            return dists.idxmin()
+        traj_df['lane_id_hint'] = traj_df.apply(snap_to_lane, axis=1)
 
     def extract_lane_changes(group):
         changes = []
@@ -132,7 +144,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
             prev = curr
         return changes
 
-    change_pairs = traj_df.groupby("vehicle_id").apply(extract_lane_changes).sum()
+    change_pairs = traj_df.groupby("id").apply(extract_lane_changes).sum()
     valid_near_pairs = set(change_pairs)  # 所有真实发生过的变道
 
     validated_near = defaultdict(list)
@@ -148,21 +160,24 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
     # =================== Step 4: 构建 crossing 连接 ===================
     print("🚦 正在构建 crossing（交叉口）连接...")
 
-    # 如果轨迹中没有 lane_id_hint，尝试匹配最近车道
+    # 确保 lane_id_hint 已存在（在 Step 3 中可能已创建）
     if 'lane_id_hint' not in traj_df.columns:
         print("📎 轨迹未标注 lane_id，正在匹配最近车道...")
         def snap_to_lane(row):
-            pt = Point(row['x'], row['y'])
-            dists = lanes_gdf.distance(pt)
+            pt = Point(row['lon'], row['lat'])
+            # 转换为投影坐标系以计算距离
+            pt_gdf = gpd.GeoDataFrame([1], geometry=[pt], crs="EPSG:4326")
+            pt_gdf = pt_gdf.to_crs(crs)
+            dists = lanes_gdf.distance(pt_gdf.geometry.iloc[0])
             return dists.idxmin()
         traj_df['lane_id_hint'] = traj_df.apply(snap_to_lane, axis=1)
 
     traj_df['lane_id_hint'] = traj_df['lane_id_hint'].astype(str)
-    traj_df = traj_df.sort_values(["vehicle_id", "timestamp"])
+    traj_df = traj_df.sort_values(["id", "frame"])
 
     # 提取所有连续 lane 变化
     transitions = []
-    for vid, group in traj_df.groupby("vehicle_id"):
+    for vid, group in traj_df.groupby("id"):
         prev_lane = None
         for _, row in group.iterrows():
             curr_lane = str(row["lane_id_hint"])
@@ -172,7 +187,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
 
     unique_transitions = set(transitions)
     crossing_connections = defaultdict(list)
-    CROSSING_MIN_DIST = 3.0
+    CROSSING_MIN_DIST = 2.0
 
     def get_distance(lid1, lid2):
         try:
@@ -228,9 +243,9 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32650"):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
 
-    LANE_SHP_PATH = "data/lane_segments.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = "data/trajectories.csv"         # 轨迹数据，含 x,y,vehicle_id,timestamp,lane_id_hint
-    OUTPUT_JSON = "output/road_graph.json"          # 输出路径
+    LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_2.shp"        # 车道段面数据
+    TRAJ_CSV_PATH = r"../data/ok_data/d210240830.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
+    OUTPUT_JSON = r"../plots/small_crossing_d210240830_graph.json"          # 输出路径
 
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_JSON), exist_ok=True)
