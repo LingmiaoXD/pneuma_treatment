@@ -48,16 +48,128 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
 
     # =================== Step 1: 加载并预处理车道数据 ===================
     print("📦 正在加载车道数据...")
-    lanes_gdf = gpd.read_file(lane_shp_path)
+    # 尝试使用不同的方式读取shp文件以解决fiona版本兼容性问题
+    try:
+        # 方法1: 使用绝对路径和显式driver
+        abs_path = os.path.abspath(lane_shp_path)
+        lanes_gdf = gpd.read_file(abs_path, driver='ESRI Shapefile')
+    except Exception as e1:
+        # 方法2: 使用fiona直接读取（避免geopandas内部的fiona.path调用）
+        try:
+            import fiona
+            # 直接使用fiona的open函数，避免通过geopandas
+            with fiona.Env():
+                with fiona.open(lane_shp_path, 'r') as src:
+                    # 读取所有要素和属性
+                    features = []
+                    for idx, feature in enumerate(src):
+                        # 确保 FID 被包含在属性中
+                        if 'fid' not in feature['properties'] and 'FID' not in feature['properties']:
+                            feature['properties']['fid'] = feature.get('id', idx)
+                        features.append(feature)
+                    # 转换为GeoDataFrame
+                    lanes_gdf = gpd.GeoDataFrame.from_features(features, crs=src.crs)
+        except Exception as e2:
+            # 方法3: 使用osgeo.ogr作为备选
+            try:
+                from osgeo import ogr
+                from shapely.geometry import shape
+                import json
+                
+                driver = ogr.GetDriverByName('ESRI Shapefile')
+                datasource = driver.Open(lane_shp_path, 0)
+                layer = datasource.GetLayer()
+                
+                features = []
+                for feature in layer:
+                    geom = feature.GetGeometryRef()
+                    # 转换为shapely几何
+                    geom_json = json.loads(geom.ExportToJson())
+                    shapely_geom = shape(geom_json)
+                    
+                    # 获取属性
+                    props = {}
+                    for i in range(feature.GetFieldCount()):
+                        field_name = feature.GetFieldDefnRef(i).GetName()
+                        props[field_name] = feature.GetField(i)
+                    
+                    # 确保 FID 被包含（ogr 的 FID 通过 GetFID() 获取）
+                    if 'fid' not in props and 'FID' not in props:
+                        props['fid'] = feature.GetFID()
+                    
+                    features.append({
+                        'geometry': shapely_geom,
+                        'properties': props
+                    })
+                
+                # 创建GeoDataFrame
+                lanes_gdf = gpd.GeoDataFrame.from_features(features)
+                # 尝试获取CRS
+                spatial_ref = layer.GetSpatialRef()
+                if spatial_ref:
+                    try:
+                        lanes_gdf.crs = spatial_ref.ExportToWkt()
+                    except:
+                        lanes_gdf.crs = "EPSG:4326"  # 默认CRS
+                else:
+                    lanes_gdf.crs = "EPSG:4326"
+                    
+            except Exception as e3:
+                print(f"所有读取方法都失败了。")
+                print(f"方法1错误: {e1}")
+                print(f"方法2错误: {e2}")
+                print(f"方法3错误: {e3}")
+                print("\n建议：请更新fiona和geopandas库版本")
+                print("命令: pip install --upgrade fiona geopandas")
+                raise
 
     # 确保使用投影坐标系以正确计算距离
     if lanes_gdf.crs is None or lanes_gdf.crs.is_geographic:
         print(f"⚠️ 原始数据为地理坐标系，正在重投影到 {crs} ...")
         lanes_gdf = lanes_gdf.to_crs(crs)
 
-    # 设置 FID 为字符串
-    lanes_gdf['fid'] = lanes_gdf['fid'].astype(str)
+    # 检查并处理 FID 字段
+    print(f"📋 数据列名: {list(lanes_gdf.columns)}")
+    
+    # 尝试找到 FID 字段（可能是 fid, FID, 或其他变体）
+    fid_col = None
+    for col in lanes_gdf.columns:
+        if col.lower() == 'fid':
+            fid_col = col
+            break
+    
+    if fid_col is None:
+        # 如果没有找到 FID 字段，使用索引作为 FID
+        print("⚠️ 未找到 FID 字段，使用索引作为 FID")
+        lanes_gdf['fid'] = lanes_gdf.index.astype(str)
+    else:
+        # 如果找到了，使用该字段
+        print(f"✅ 找到 FID 字段: {fid_col}")
+        if fid_col != 'fid':
+            lanes_gdf['fid'] = lanes_gdf[fid_col].astype(str)
+        else:
+            lanes_gdf['fid'] = lanes_gdf['fid'].astype(str)
+    
+    # 设置 FID 为索引
     lanes_gdf.set_index('fid', inplace=True)
+
+    # 检查并处理 join_fid 字段
+    join_fid_col = None
+    for col in lanes_gdf.columns:
+        if col.lower() in ['join_fid', 'JOIN_FID']:
+            join_fid_col = col
+            break
+    
+    if join_fid_col is None:
+        # 如果没有找到 join_fid 字段，使用 fid 作为 join_fid（每个车道段独立）
+        print("⚠️ 未找到 join_fid 字段，使用 fid 作为 join_fid（每个车道段独立）")
+        lanes_gdf['join_fid'] = lanes_gdf.index
+    else:
+        # 如果找到了，使用该字段
+        print(f"✅ 找到 join_fid 字段: {join_fid_col}")
+        if join_fid_col != 'join_fid':
+            lanes_gdf['join_fid'] = lanes_gdf[join_fid_col]
+        # 如果已经是 join_fid，不需要额外处理
 
     # 添加中心点列
     lanes_gdf['center_point'] = lanes_gdf.centroid
