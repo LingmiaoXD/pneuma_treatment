@@ -114,22 +114,17 @@ print(f"空间连接后共有 {len(joined)} 条匹配记录")
 
 # 按分块（使用buffer_idx）分组计算平均速度和车辆数量
 print("正在计算每个分块的车辆数量...")
-# stats_by_buffer = joined.groupby('buffer_idx').agg({
-#     'v': 'mean',  # 平均速度
-#     'id': 'count'  # 车辆记录数量
-# }).reset_index()
-# stats_by_buffer.columns = ['buffer_idx', 'demo_20_30', 'vehicle_count']
-# 只计算车辆数量
 stats_by_buffer = joined.groupby('buffer_idx').agg({
+    'v': 'mean',  # 平均速度
     'id': 'count'  # 车辆记录数量
 }).reset_index()
-stats_by_buffer.columns = ['buffer_idx', 'vehicle_count']
+stats_by_buffer.columns = ['buffer_idx', 'demo_20_30', 'vehicle_count']
 
 # 将结果合并到buffer_gdf
 result_gdf = buffer_gdf.merge(stats_by_buffer, on='buffer_idx', how='left')
 
-# 对于没有车辆的分块，平均速度设为0，车辆数量设为0
-# result_gdf['demo_20_30'] = result_gdf['demo_20_30'].fillna(0)
+# 对于没有车辆的分块，平均速度设为-1，车辆数量设为0
+result_gdf['demo_20_30'] = result_gdf['demo_20_30'].fillna(-1)
 result_gdf['vehicle_count'] = result_gdf['vehicle_count'].fillna(0).astype(int)
 
 # 删除临时添加的buffer_idx列
@@ -141,7 +136,3 @@ output_path = '../plots/buffer/d210240830_2.shp'
 result_gdf.to_file(output_path, driver='ESRI Shapefile', encoding='utf-8')
 print(f"完成！已将车辆数量添加到 {len(result_gdf)} 个分块中")
 print(f"有车辆的分块数量: {len(stats_by_buffer)}")
-# print(f"平均速度统计:")
-# print(result_gdf['demo_20_30'].describe())
-print(f"车辆数量统计:")
-print(result_gdf['vehicle_count'].describe())
