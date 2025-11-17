@@ -142,9 +142,9 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     traj_df = pd.read_csv(traj_csv_path)
     traj_df = traj_df.sort_values(["id", "frame"])
 
-    # 如果轨迹中没有 lane_id_hint，先匹配最近车道
-    if 'lane_id_hint' not in traj_df.columns:
-        print("📎 轨迹未标注 lane_id，正在匹配最近车道...")
+    # 如果轨迹中没有 FID，先匹配最近车道
+    if 'FID' not in traj_df.columns:
+        print("📎 轨迹未标注 FID，正在匹配最近车道...")
         def snap_to_lane(row):
             pt = Point(row['lon'], row['lat'])
             # 转换为投影坐标系以计算距离
@@ -152,13 +152,13 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
             pt_gdf = pt_gdf.to_crs(crs)
             dists = lanes_gdf.distance(pt_gdf.geometry.iloc[0])
             return dists.idxmin()
-        traj_df['lane_id_hint'] = traj_df.apply(snap_to_lane, axis=1)
+        traj_df['FID'] = traj_df.apply(snap_to_lane, axis=1)
 
     def extract_lane_changes(group):
         changes = []
         prev = None
         for _, row in group.iterrows():
-            curr = str(row["lane_id_hint"])
+            curr = str(row["FID"])
             if prev and prev != curr:
                 changes.append((prev, curr))
             prev = curr
@@ -180,9 +180,9 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     # =================== Step 4: 构建 crossing 连接 ===================
     print("🚦 正在构建 crossing（交叉口）连接...")
 
-    # 确保 lane_id_hint 已存在（在 Step 3 中可能已创建）
-    if 'lane_id_hint' not in traj_df.columns:
-        print("📎 轨迹未标注 lane_id，正在匹配最近车道...")
+    # 确保 FID 已存在（在 Step 3 中可能已创建）
+    if 'FID' not in traj_df.columns:
+        print("📎 轨迹未标注 FID，正在匹配最近车道...")
         def snap_to_lane(row):
             pt = Point(row['lon'], row['lat'])
             # 转换为投影坐标系以计算距离
@@ -190,9 +190,9 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
             pt_gdf = pt_gdf.to_crs(crs)
             dists = lanes_gdf.distance(pt_gdf.geometry.iloc[0])
             return dists.idxmin()
-        traj_df['lane_id_hint'] = traj_df.apply(snap_to_lane, axis=1)
+        traj_df['FID'] = traj_df.apply(snap_to_lane, axis=1)
 
-    traj_df['lane_id_hint'] = traj_df['lane_id_hint'].astype(str)
+    traj_df['FID'] = traj_df['FID'].astype(str)
     traj_df = traj_df.sort_values(["id", "frame"])
 
     # 提取所有连续 lane 变化
@@ -200,7 +200,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     for vid, group in traj_df.groupby("id"):
         prev_lane = None
         for _, row in group.iterrows():
-            curr_lane = str(row["lane_id_hint"])
+            curr_lane = str(row["FID"])
             if prev_lane and prev_lane != curr_lane:
                 transitions.append((prev_lane, curr_lane))
             prev_lane = curr_lane
@@ -264,7 +264,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
 if __name__ == "__main__":
 
     LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_2.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"../data/ok_data/d210240830.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
+    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240830.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
     OUTPUT_JSON = r"../plots/small_crossing_d210240830_graph.json"          # 输出路径
 
     # 创建输出目录
