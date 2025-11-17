@@ -5,6 +5,8 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+from shapefile_utils import read_shapefile_with_fid
+
 
 if __name__ == "__main__":
     LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_2.shp"        # 车道段面数据
@@ -17,23 +19,8 @@ if __name__ == "__main__":
     
     # =================== Step 1: 读取车道段面数据 ===================
     print("正在读取车道段面数据...")
-    try:
-        abs_path = os.path.abspath(LANE_SHP_PATH)
-        lane_gdf = gpd.read_file(abs_path, driver='ESRI Shapefile')
-    except Exception as e1:
-        try:
-            import fiona
-            with fiona.Env():
-                with fiona.open(LANE_SHP_PATH, 'r') as src:
-                    features = []
-                    for feature in src:
-                        features.append(feature)
-                    lane_gdf = gpd.GeoDataFrame.from_features(features, crs=src.crs)
-        except Exception as e2:
-            print(f"读取shp文件失败: {e1}, {e2}")
-            raise
-    
-    print(f"共读取 {len(lane_gdf)} 个车道段")
+    # 使用工具函数读取 Shapefile 并确保 FID 正确
+    lane_gdf = read_shapefile_with_fid(LANE_SHP_PATH, crs=None, set_fid_as_index=False, verbose=True)
     
     # =================== Step 2: 读取轨迹数据 ===================
     print("正在读取轨迹数据...")
@@ -64,17 +51,32 @@ if __name__ == "__main__":
     # 使用空间连接找出每个点在哪个面要素内
     joined = gpd.sjoin(traj_gdf, lane_gdf, how='left', predicate='within')
     
-    # 提取FID作为车道段ID（确保索引对齐）
-    if 'FID' in joined.columns:
-        traj_df['车道段ID'] = joined['FID'].values
-    elif 'fid' in joined.columns:
-        traj_df['车道段ID'] = joined['fid'].values
-    else:
-        # 如果没有FID字段，使用索引
-        print("警告: 未找到FID字段，使用索引作为车道段ID")
-        traj_df['车道段ID'] = joined.index_right.values if hasattr(joined.index_right, 'values') else joined.index_right
+    # 如果有多行匹配（一个点匹配多个面），只保留第一个匹配
+    # 使用索引来匹配回原始的traj_df
+    if len(joined) > len(traj_df):
+        print(f"⚠️ 检测到多行匹配（{len(joined)} 行 vs {len(traj_df)} 行），将只保留第一个匹配")
+        # 按索引去重，保留每个点的第一个匹配
+        joined = joined[~joined.index.duplicated(keep='first')]
     
-    print(f"空间连接完成，共 {len(joined)} 条记录")
+    # 确保索引对齐
+    joined = joined.reindex(traj_df.index)
+    
+    # 提取FID作为车道段ID（使用之前创建的fid字段）
+    if 'fid' in joined.columns:
+        traj_df['FID'] = joined['fid'].values
+    else:
+        # 如果空间连接后没有fid字段，使用index_right
+        print("⚠️ 空间连接后未找到fid字段，使用index_right作为车道段ID")
+        traj_df['FID'] = joined.index_right.astype(str) if hasattr(joined.index_right, 'astype') else joined.index_right
+    
+    print(f"空间连接完成，共 {len(traj_df)} 条记录")
+    
+    # 立即过滤掉没有匹配上车道段ID的记录，避免后续冗余计算
+    print("正在过滤数据，只保留有车道段ID的记录...")
+    original_count = len(traj_df)
+    traj_df = traj_df[traj_df['FID'].notna()].copy()
+    filtered_count = len(traj_df)
+    print(f"过滤前: {original_count} 条记录，过滤后: {filtered_count} 条记录")
     
     # =================== Step 5: 连接元数据获取car_type ===================
     print("正在读取轨迹元数据...")
@@ -99,6 +101,6 @@ if __name__ == "__main__":
     print(f"正在保存结果到 {OUTPUT_CSV}...")
     traj_df.to_csv(OUTPUT_CSV, index=False, encoding='utf-8')
     
-    print(f"完成！共处理 {len(traj_df)} 条轨迹记录")
-    print(f"有车道段ID的记录数: {traj_df['车道段ID'].notna().sum()}")
+    print(f"完成！共处理 {filtered_count} 条轨迹记录（仅包含有车道段ID的记录）")
+    print(f"有车道段ID的记录数: {traj_df['FID'].notna().sum()}")
     print(f"有car_type的记录数: {traj_df['car_type'].notna().sum()}")
