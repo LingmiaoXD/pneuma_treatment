@@ -3,10 +3,9 @@
 build_road_graph.py
 
 基于分段车道面要素和车辆轨迹数据，
-构建道路图结构，节点为 lane_segment，边分为三种类型：
+构建道路图结构，节点为 lane_segment，边分为两种类型：
 - direct: 同一道路线上的前后连接
 - near: 相邻车道（结合轨迹变道验证）
-- crossing: 轨迹出现跳跃且距离 > 3m，且非 direct/near
 
 输出格式：
 {
@@ -15,8 +14,7 @@ build_road_graph.py
       "lane_id": "1",
       "node_connections": {
         "direct": [2],
-        "near": [3],
-        "crossing": [5]
+        "near": [3]
       }
     },
     ...
@@ -123,7 +121,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     idx_to_id = {i: lid for i, lid in enumerate(lanes_gdf.index)}
     id_to_idx = {lid: i for i, lid in idx_to_id.items()}
 
-    NEAR_THRESHOLD = 6.0  # 米，适合城市道路宽度
+    NEAR_THRESHOLD = 3.0  # 米，适合城市道路宽度
 
     for i, (lid, row) in enumerate(lanes_gdf.iterrows()):
         center = row.center_point
@@ -177,59 +175,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     near_connections = validated_near
     print("✅ near 连接验证完成")
 
-    # =================== Step 4: 构建 crossing 连接 ===================
-    print("🚦 正在构建 crossing（交叉口）连接...")
-
-    # 确保 FID 已存在（在 Step 3 中可能已创建）
-    if 'FID' not in traj_df.columns:
-        print("📎 轨迹未标注 FID，正在匹配最近车道...")
-        def snap_to_lane(row):
-            pt = Point(row['lon'], row['lat'])
-            # 转换为投影坐标系以计算距离
-            pt_gdf = gpd.GeoDataFrame([1], geometry=[pt], crs="EPSG:4326")
-            pt_gdf = pt_gdf.to_crs(crs)
-            dists = lanes_gdf.distance(pt_gdf.geometry.iloc[0])
-            return dists.idxmin()
-        traj_df['FID'] = traj_df.apply(snap_to_lane, axis=1)
-
-    traj_df['FID'] = traj_df['FID'].astype(str)
-    traj_df = traj_df.sort_values(["id", "frame"])
-
-    # 提取所有连续 lane 变化
-    transitions = []
-    for vid, group in traj_df.groupby("id"):
-        prev_lane = None
-        for _, row in group.iterrows():
-            curr_lane = str(row["FID"])
-            if prev_lane and prev_lane != curr_lane:
-                transitions.append((prev_lane, curr_lane))
-            prev_lane = curr_lane
-
-    unique_transitions = set(transitions)
-    crossing_connections = defaultdict(list)
-    CROSSING_MIN_DIST = 2.0
-
-    def get_distance(lid1, lid2):
-        try:
-            p1 = lanes_gdf.loc[lid1].center_point
-            p2 = lanes_gdf.loc[lid2].center_point
-            return p1.distance(p2)
-        except KeyError:
-            return float('inf')
-
-    for (frm, to) in unique_transitions:
-        if frm == to:
-            continue
-        if to in direct_connections.get(frm, []) or to in near_connections.get(frm, []):
-            continue
-        dist = get_distance(frm, to)
-        if dist < CROSSING_MIN_DIST:
-            continue
-        crossing_connections[frm].append(to)
-
-    print("✅ crossing 连接构建完成")
-
-    # =================== Step 5: 输出图结构 ===================
+    # =================== Step 4: 输出图结构 ===================
     print("💾 正在生成图结构 JSON...")
     graph_data = {"nodes": []}
 
@@ -239,14 +185,11 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
 
         directs = [int(x) for x in direct_connections[lid_str]]
         nears = [int(x) for x in near_connections[lid_str]]
-        crossings = [int(x) for x in crossing_connections[lid_str]]
 
         if directs:
             connections["direct"] = directs
         if nears:
             connections["near"] = nears
-        if crossings:
-            connections["crossing"] = crossings
 
         graph_data["nodes"].append({
             "lane_id": lid_str,
