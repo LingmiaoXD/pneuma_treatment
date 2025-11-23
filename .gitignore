@@ -8,3 +8,4 @@ plots/*
 !data/derived/.gitkeep 
 !plots/.gitkeep 
 .DS_Store
+/data/trajectory_with_laneid

@@ -40,9 +40,11 @@ def main(traj_csv_path, output_csv_path):
         traj_df['frame'] = traj_df['frame'].astype(str).str.rstrip(';')
         traj_df['frame'] = traj_df['frame'].astype(float)
     
-    # 过滤掉没有车道段ID的记录
+    # 过滤掉没有车道段ID的记录（包括NaN和空字符串）
     original_count = len(traj_df)
     traj_df = traj_df[traj_df['FID'].notna()].copy()
+    # 同时过滤掉空字符串
+    traj_df = traj_df[traj_df['FID'].astype(str).str.strip() != ''].copy()
     filtered_count = len(traj_df)
     print(f"📊 过滤后保留 {filtered_count} 条有效记录（过滤前: {original_count}）")
 
@@ -51,8 +53,8 @@ def main(traj_csv_path, output_csv_path):
     traj_df = traj_df.sort_values(["id", "frame"]).copy()
     
     # 确保车道段ID为字符串类型，便于统计
-    traj_df['FID'] = traj_df['FID'].astype(str)
-
+    traj_df['FID'] = traj_df['FID'].astype(str).str.strip()
+    
     # =================== Step 3: 提取车道段变动 ===================
     print("🔍 正在提取车道段ID变动...")
     
@@ -62,7 +64,8 @@ def main(traj_csv_path, output_csv_path):
         prev_lane_id = None
         
         for _, row in group.iterrows():
-            curr_lane_id = str(row["FID"])  # FID字段存储的是车道段的id值
+            # FID字段存储的是车道段的id值（已经是字符串类型）
+            curr_lane_id = row["FID"]
             
             # 如果当前车道段ID与上一个不同，记录一次变动
             if prev_lane_id is not None and prev_lane_id != curr_lane_id:
@@ -111,13 +114,7 @@ def main(traj_csv_path, output_csv_path):
     
     print(f"🎉 统计结果已保存至: {output_csv_path}")
     print(f"📊 总计变动类型数: {len(transition_df)}")
-    print(f"📊 总变动次数: {transition_df['count'].sum()}")
-    print(f"📊 最高频次变动: {transition_df.iloc[0]['from_lane_id']} -> {transition_df.iloc[0]['to_lane_id']} (出现 {transition_df.iloc[0]['count']} 次)")
     
-    # 打印前10个最常见的变动
-    print("\n📋 前10个最常见的车道段变动:")
-    for idx, row in transition_df.head(10).iterrows():
-        print(f"  {row['from_lane_id']} -> {row['to_lane_id']}: {row['count']} 次")
 
 
 # =================== 示例调用 ===================

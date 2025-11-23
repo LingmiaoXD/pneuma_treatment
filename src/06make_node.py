@@ -27,6 +27,7 @@ import geopandas as gpd
 import numpy as np
 from scipy.spatial import cKDTree
 from collections import defaultdict
+from shapefile_utils import read_shapefile_with_fallback
 
 
 def main(lane_shp_path, output_json_path, crs="EPSG:32634"):
@@ -42,8 +43,8 @@ def main(lane_shp_path, output_json_path, crs="EPSG:32634"):
 
     # =================== Step 1: 加载并预处理车道数据 ===================
     print("📦 正在加载车道数据...")
-    # 读取 Shapefile
-    lanes_gdf = gpd.read_file(lane_shp_path)
+    # 读取 Shapefile（使用兼容性函数避免版本问题）
+    lanes_gdf = read_shapefile_with_fallback(lane_shp_path, verbose=True)
     
     # 确保使用投影坐标系以正确计算距离
     if lanes_gdf.crs is None or lanes_gdf.crs.is_geographic:

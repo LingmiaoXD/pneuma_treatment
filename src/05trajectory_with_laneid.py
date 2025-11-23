@@ -5,6 +5,8 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+import sys
+from shapefile_utils import read_shapefile_with_fallback
 
 
 if __name__ == "__main__":
@@ -18,8 +20,12 @@ if __name__ == "__main__":
     
     # =================== Step 1: 读取车道段面数据 ===================
     print("正在读取车道段面数据...")
-    # 读取 Shapefile
-    lane_gdf = gpd.read_file(LANE_SHP_PATH)
+    # 读取 Shapefile（使用兼容性函数避免版本问题）
+    lane_gdf = read_shapefile_with_fallback(LANE_SHP_PATH, verbose=True)
+    
+    # 打印所有属性字段名称，用于调试
+    print(f"📋 lane_gdf 的所有属性字段名称: {list(lane_gdf.columns)}")
+    print(f"📋 lane_gdf 的索引类型: {type(lane_gdf.index).__name__}")
     
     # =================== Step 2: 读取轨迹数据 ===================
     print("正在读取轨迹数据...")
@@ -31,6 +37,7 @@ if __name__ == "__main__":
         traj_df['frame'] = traj_df['frame'].astype(float)
     
     print(f"共读取 {len(traj_df)} 条轨迹记录")
+    print(f"📋 traj_df 的所有列名: {list(traj_df.columns)}")
     
     # =================== Step 3: 创建轨迹点的GeoDataFrame ===================
     print("正在创建轨迹点几何...")
@@ -60,13 +67,27 @@ if __name__ == "__main__":
     # 确保索引对齐
     joined = joined.reindex(traj_df.index)
     
-    # 提取id作为车道段ID
-    if 'id' in joined.columns:
-        traj_df['FID'] = joined['id'].values
+    # 打印空间连接后的所有列名，用于调试
+    print(f"📋 空间连接后 joined 的所有列名: {list(joined.columns)}")
+    
+    # 提取车道段ID
+    # 注意：
+    # - 轨迹数据的 'id' 是车辆ID（车辆标识）
+    # - 车道段数据的 'id' 是车道段ID（车道段标识）
+    # - 如果左右两个GeoDataFrame都有'id'字段，右侧的会被重命名为'id_right'
+    # - 因此应该使用 'id_right' 作为车道段ID，而不是 'id'（'id' 是车辆ID）
+    
+    if 'id_right' in joined.columns:
+        # 使用 id_right（来自 lane_gdf 的车道段 id 字段）
+        print("✅ 找到 id_right 字段，使用 id_right 作为车道段ID")
+        traj_df['FID'] = joined['id_right'].astype(str) if hasattr(joined['id_right'], 'astype') else joined['id_right']
     else:
-        # 如果空间连接后没有id字段，使用index_right
-        print("⚠️ 空间连接后未找到id字段，使用index_right作为车道段ID")
-        traj_df['FID'] = joined.index_right.astype(str) if hasattr(joined.index_right, 'astype') else joined.index_right
+        # 如果没有 id_right，说明 lane_gdf 可能没有 'id' 字段，直接报错退出
+        print("❌ 错误：空间连接后未找到 id_right 字段（车道段ID字段）")
+        print(f"   可用的列名: {list(joined.columns)}")
+        print(f"   lane_gdf 的列名: {list(lane_gdf.columns)}")
+        print("   请检查车道段数据是否包含 'id' 字段")
+        sys.exit(1)
     
     print(f"空间连接完成，共 {len(traj_df)} 条记录")
     

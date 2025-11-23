@@ -5,77 +5,14 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 import os
+from shapefile_utils import read_shapefile_with_fallback
 
 # 读取分块面数据（shp文件）
 print("正在读取分块面数据...")
 buffer_shp_path = '../plots/buffer/d210240830.shp'
 
-# 尝试使用不同的方式读取shp文件以解决fiona版本兼容性问题
-try:
-    # 方法1: 使用绝对路径和显式driver
-    abs_path = os.path.abspath(buffer_shp_path)
-    buffer_gdf = gpd.read_file(abs_path, driver='ESRI Shapefile')
-except Exception as e1:
-    # 方法2: 使用fiona直接读取（避免geopandas内部的fiona.path调用）
-    try:
-        import fiona
-        # 直接使用fiona的open函数，避免通过geopandas
-        with fiona.Env():
-            with fiona.open(buffer_shp_path, 'r') as src:
-                # 读取所有要素和属性
-                features = []
-                for feature in src:
-                    features.append(feature)
-                # 转换为GeoDataFrame
-                buffer_gdf = gpd.GeoDataFrame.from_features(features, crs=src.crs)
-    except Exception as e2:
-        # 方法3: 使用osgeo.ogr作为备选
-        try:
-            from osgeo import ogr
-            driver = ogr.GetDriverByName('ESRI Shapefile')
-            datasource = driver.Open(buffer_shp_path, 0)
-            layer = datasource.GetLayer()
-            
-            features = []
-            for feature in layer:
-                geom = feature.GetGeometryRef()
-                # 转换为shapely几何
-                from shapely.geometry import shape
-                import json
-                geom_json = json.loads(geom.ExportToJson())
-                shapely_geom = shape(geom_json)
-                
-                # 获取属性
-                props = {}
-                for i in range(feature.GetFieldCount()):
-                    field_name = feature.GetFieldDefnRef(i).GetName()
-                    props[field_name] = feature.GetField(i)
-                
-                features.append({
-                    'geometry': shapely_geom,
-                    'properties': props
-                })
-            
-            # 创建GeoDataFrame
-            buffer_gdf = gpd.GeoDataFrame.from_features(features)
-            # 尝试获取CRS
-            spatial_ref = layer.GetSpatialRef()
-            if spatial_ref:
-                try:
-                    buffer_gdf.crs = spatial_ref.ExportToWkt()
-                except:
-                    buffer_gdf.crs = "EPSG:4326"  # 默认CRS
-            else:
-                buffer_gdf.crs = "EPSG:4326"
-                
-        except Exception as e3:
-            print(f"所有读取方法都失败了。")
-            print(f"方法1错误: {e1}")
-            print(f"方法2错误: {e2}")
-            print(f"方法3错误: {e3}")
-            print("\n建议：请更新fiona和geopandas库版本")
-            print("命令: pip install --upgrade fiona geopandas")
-            raise
+# 使用兼容性函数读取shp文件（避免fiona版本兼容性问题）
+buffer_gdf = read_shapefile_with_fallback(buffer_shp_path, verbose=True)
 
 print(f"共读取 {len(buffer_gdf)} 个分块")
 
