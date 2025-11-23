@@ -2,6 +2,7 @@ data/derived/*
 data/ok_data/*
 data/raw_data/*
 data/trajectory_with_laneid/*
+data/road_graph/*
 plots/*
 .pneuma_env/
 !data/derived/.gitkeep 

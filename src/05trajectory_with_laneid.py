@@ -5,7 +5,6 @@ import pandas as pd
 import geopandas as gpd
 from shapely.geometry import Point
 import os
-from shapefile_utils import read_shapefile_with_fid
 
 
 if __name__ == "__main__":
@@ -19,8 +18,8 @@ if __name__ == "__main__":
     
     # =================== Step 1: 读取车道段面数据 ===================
     print("正在读取车道段面数据...")
-    # 使用工具函数读取 Shapefile 并确保 FID 正确
-    lane_gdf = read_shapefile_with_fid(LANE_SHP_PATH, crs=None, set_fid_as_index=False, verbose=True)
+    # 读取 Shapefile
+    lane_gdf = gpd.read_file(LANE_SHP_PATH)
     
     # =================== Step 2: 读取轨迹数据 ===================
     print("正在读取轨迹数据...")
@@ -61,12 +60,12 @@ if __name__ == "__main__":
     # 确保索引对齐
     joined = joined.reindex(traj_df.index)
     
-    # 提取FID作为车道段ID（使用之前创建的fid字段）
-    if 'fid' in joined.columns:
-        traj_df['FID'] = joined['fid'].values
+    # 提取id作为车道段ID
+    if 'id' in joined.columns:
+        traj_df['FID'] = joined['id'].values
     else:
-        # 如果空间连接后没有fid字段，使用index_right
-        print("⚠️ 空间连接后未找到fid字段，使用index_right作为车道段ID")
+        # 如果空间连接后没有id字段，使用index_right
+        print("⚠️ 空间连接后未找到id字段，使用index_right作为车道段ID")
         traj_df['FID'] = joined.index_right.astype(str) if hasattr(joined.index_right, 'astype') else joined.index_right
     
     print(f"空间连接完成，共 {len(traj_df)} 条记录")

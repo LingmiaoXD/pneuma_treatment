@@ -2,10 +2,9 @@
 """
 build_road_graph.py
 
-基于分段车道面要素和车辆轨迹数据，
-构建道路图结构，节点为 lane_segment，边分为两种类型：
+基于分段车道面要素构建道路图结构，节点为 lane_segment，边分为两种类型：
 - direct: 同一道路线上的前后连接
-- near: 相邻车道（结合轨迹变道验证）
+- near: 相邻车道（基于空间距离判断）
 
 输出格式：
 {
@@ -24,22 +23,18 @@ build_road_graph.py
 
 import os
 import json
-import pandas as pd
 import geopandas as gpd
 import numpy as np
-from shapely.geometry import Point
 from scipy.spatial import cKDTree
 from collections import defaultdict
-from shapefile_utils import read_shapefile_with_fid
 
 
-def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
+def main(lane_shp_path, output_json_path, crs="EPSG:32634"):
     """
     主函数
 
     参数:
         lane_shp_path: str, 车道段面要素 Shapefile 路径
-        traj_csv_path: str, 轨迹 CSV 路径，含 id, frame, lon, lat 等字段
         output_json_path: str, 输出 JSON 文件路径
         crs: str, 投影坐标系（用于距离计算），希腊地区默认 UTM Zone 34N
     """
@@ -47,17 +42,16 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
 
     # =================== Step 1: 加载并预处理车道数据 ===================
     print("📦 正在加载车道数据...")
-    # 使用工具函数读取 Shapefile 并确保 FID 正确
-    # 注意：这里先不设置 FID 为索引，因为后面需要处理 join_fid
-    lanes_gdf = read_shapefile_with_fid(lane_shp_path, crs=crs, set_fid_as_index=False, verbose=True)
+    # 读取 Shapefile
+    lanes_gdf = gpd.read_file(lane_shp_path)
     
-    # 确保使用投影坐标系以正确计算距离（工具函数已处理，这里作为保险）
+    # 确保使用投影坐标系以正确计算距离
     if lanes_gdf.crs is None or lanes_gdf.crs.is_geographic:
         print(f"⚠️ 原始数据为地理坐标系，正在重投影到 {crs} ...")
         lanes_gdf = lanes_gdf.to_crs(crs)
     
-    # 设置 FID 为索引
-    lanes_gdf.set_index('fid', inplace=True)
+    # 设置 id 为索引
+    lanes_gdf.set_index('id', inplace=True)
 
     # 检查并处理 join_fid 字段
     join_fid_col = None
@@ -67,8 +61,8 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
             break
     
     if join_fid_col is None:
-        # 如果没有找到 join_fid 字段，使用 fid 作为 join_fid（每个车道段独立）
-        print("⚠️ 未找到 join_fid 字段，使用 fid 作为 join_fid（每个车道段独立）")
+        # 如果没有找到 join_fid 字段，使用 id 作为 join_fid（每个车道段独立）
+        print("⚠️ 未找到 join_fid 字段，使用 id 作为 join_fid（每个车道段独立）")
         lanes_gdf['join_fid'] = lanes_gdf.index
     else:
         # 如果找到了，使用该字段
@@ -119,7 +113,6 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
     coords = np.array([[pt.x, pt.y] for pt in lanes_gdf.center_point])
     tree = cKDTree(coords)
     idx_to_id = {i: lid for i, lid in enumerate(lanes_gdf.index)}
-    id_to_idx = {lid: i for i, lid in idx_to_id.items()}
 
     NEAR_THRESHOLD = 3.0  # 米，适合城市道路宽度
 
@@ -135,45 +128,7 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
                 continue
             near_connections[lid].append(neighbor_id)
 
-    # ------------------- 使用轨迹验证 near -------------------
-    print("🔍 正在使用轨迹数据验证 near 连接...")
-    traj_df = pd.read_csv(traj_csv_path)
-    traj_df = traj_df.sort_values(["id", "frame"])
-
-    # 如果轨迹中没有 FID，先匹配最近车道
-    if 'FID' not in traj_df.columns:
-        print("📎 轨迹未标注 FID，正在匹配最近车道...")
-        def snap_to_lane(row):
-            pt = Point(row['lon'], row['lat'])
-            # 转换为投影坐标系以计算距离
-            pt_gdf = gpd.GeoDataFrame([1], geometry=[pt], crs="EPSG:4326")
-            pt_gdf = pt_gdf.to_crs(crs)
-            dists = lanes_gdf.distance(pt_gdf.geometry.iloc[0])
-            return dists.idxmin()
-        traj_df['FID'] = traj_df.apply(snap_to_lane, axis=1)
-
-    def extract_lane_changes(group):
-        changes = []
-        prev = None
-        for _, row in group.iterrows():
-            curr = str(row["FID"])
-            if prev and prev != curr:
-                changes.append((prev, curr))
-            prev = curr
-        return changes
-
-    change_pairs = traj_df.groupby("id").apply(extract_lane_changes).sum()
-    valid_near_pairs = set(change_pairs)  # 所有真实发生过的变道
-
-    validated_near = defaultdict(list)
-    for lid in lanes_gdf.index:
-        candidates = near_connections[lid]
-        for nb in candidates:
-            if (str(lid), str(nb)) in valid_near_pairs:
-                validated_near[lid].append(nb)
-
-    near_connections = validated_near
-    print("✅ near 连接验证完成")
+    print(f"✅ near 连接构建完成，共 {sum(len(v) for v in near_connections.values())} 条连接")
 
     # =================== Step 4: 输出图结构 ===================
     print("💾 正在生成图结构 JSON...")
@@ -207,11 +162,10 @@ def main(lane_shp_path, traj_csv_path, output_json_path, crs="EPSG:32634"):
 if __name__ == "__main__":
 
     LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_2.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240830.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
-    OUTPUT_JSON = r"../plots/small_crossing_d210240830_graph.json"          # 输出路径
+    OUTPUT_JSON = r"../data/road_graph/small_crossing_d210240830_graph.json"                   # 输出路径
 
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_JSON), exist_ok=True)
 
     # 执行构建
-    main(LANE_SHP_PATH, TRAJ_CSV_PATH, OUTPUT_JSON)
+    main(LANE_SHP_PATH, OUTPUT_JSON)
