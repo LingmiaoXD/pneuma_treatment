@@ -8,17 +8,15 @@
 输出：JSON格式的图结构，与06make_node.py格式一致
 
 规则：
-- 每个 from_lane_id 作为一个 node 的 lane_id
+- 每个 from_lane_id 作为一个 node 的 lane_id（以整数形式输出）
 - count 最高的 to_lane_id 放到 direct 里
-- 低于最高但通过IQR方法筛选的放进 near 里（使用Q1作为阈值，低于Q1的作为噪声舍弃）
-- 其余的作为噪声舍弃
+- 低于最高但仍大于10辆的放进 near 里
+- 小于等于10的全部作为噪声舍弃；若某 from_lane_id 全部 <=10，则该节点直接忽略
 """
 
 import os
 import json
 import pandas as pd
-import numpy as np
-from collections import defaultdict
 
 
 def main(transitions_csv_path, output_json_path):
@@ -59,44 +57,33 @@ def main(transitions_csv_path, output_json_path):
         # 按 count 降序排序
         sorted_group = group.sort_values('count', ascending=False)
         
-        # 获取最高 count 值
-        max_count = sorted_group.iloc[0]['count']
+        # 仅保留 count > 10 的有效记录
+        valid_group = sorted_group[sorted_group['count'] > 10]
+        noise_count += len(sorted_group) - len(valid_group)
+        if valid_group.empty:
+            # 当前 from_lane_id 没有有效记录，跳过
+            continue
         
-        # 使用IQR方法计算阈值（针对该from_lane_id的所有count值）
-        counts = sorted_group['count'].values
-        
-        # 如果只有1个或2个数据点，IQR不适用，使用简单规则
-        if len(counts) <= 2:
-            # 如果只有1个，直接作为direct；如果有2个，最高的作为direct，另一个作为near
-            iqr_threshold = 0
-        else:
-            # 计算Q1、Q3和IQR
-            Q1 = np.percentile(counts, 25)
-            Q3 = np.percentile(counts, 75)
-            IQR = Q3 - Q1
-            
-            # 使用Q1作为阈值（低于Q1的作为噪声）
-            # 对于"少数高频+多数低频"的分布，Q1以下通常是噪声
-            iqr_threshold = Q1
+        # 获取最高 count 值（一定 > 10）
+        max_count = valid_group.iloc[0]['count']
         
         # 初始化连接列表
         direct_connections = []
         near_connections = []
         
-        # 遍历所有可能的 to_lane_id
-        for _, row in sorted_group.iterrows():
+        # 遍历所有有效 to_lane_id
+        for _, row in valid_group.iterrows():
             to_lane_id = row['to_lane_id']
             count = row['count']
             
+            # 将 to_lane_id 转换为整数（处理可能是 '7.0' 这样的浮点数字符串）
+            to_lane_id_int = int(float(to_lane_id))
+            
             # count 最高的放入 direct
             if count == max_count:
-                direct_connections.append(int(to_lane_id))
-            # 低于最高但大于等于IQR阈值的放入 near
-            elif count >= iqr_threshold:
-                near_connections.append(int(to_lane_id))
-            # 其余舍弃（作为噪声）
+                direct_connections.append(to_lane_id_int)
             else:
-                noise_count += 1
+                near_connections.append(to_lane_id_int)
         
         # 构建节点连接字典
         node_connections = {}
@@ -105,9 +92,10 @@ def main(transitions_csv_path, output_json_path):
         if near_connections:
             node_connections["near"] = near_connections
         
-        # 添加到图结构中
+        # 添加到图结构中（lane_id 输出为整数）
+        lane_id_int = int(float(from_lane_id))
         graph_data["nodes"].append({
-            "lane_id": str(from_lane_id),
+            "lane_id": lane_id_int,
             "node_connections": node_connections
         })
     
