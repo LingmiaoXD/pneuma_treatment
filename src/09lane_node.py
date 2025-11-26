@@ -378,6 +378,18 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     # 转换为DataFrame并保存
     results_df = pd.DataFrame(results)
     results_df = results_df.sort_values(['lane_id', 'start_frame']).reset_index(drop=True)
+    
+    # =================== 归一化处理 ===================
+    # avg_speed: -1保持为1（畅通无阻），其他按0~100归一化到0~1
+    results_df['avg_speed'] = results_df['avg_speed'].apply(
+        lambda x: 1.0 if x == -1 else round(min(max(x / 100.0, 0.0), 1.0), 2)
+    )
+    
+    # total_vehicles: 按对数变换 + 归一化
+    results_df['total_vehicles'] = results_df['total_vehicles'].apply(
+        lambda x: round(np.log(1 + x) / np.log(15) , 2)
+    )
+    
     results_df.to_csv(output_csv_path, index=False, encoding='utf-8')
     
     print(f"🎉 统计结果已保存至: {output_csv_path}")
