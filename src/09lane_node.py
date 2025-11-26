@@ -26,8 +26,8 @@ LANE_LENGTH = 10.0  # 默认10米
 # 车辆类型占用长度（米）
 VEHICLE_LENGTHS = {
     'car': 4.0,
-    'medium': 10.0,
-    'heavy': 16.0,
+    'medium': 8.0,
+    'heavy': 14.0,
     'motorcycle': 2.0
 }
 
@@ -196,7 +196,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     traj_df = pd.read_csv(traj_csv_path)
     
     # 检查必要字段
-    required_fields = ['id', 'frame', 'FID']
+    required_fields = ['id', 'frame', 'FID', 'v']
     missing_fields = [f for f in required_fields if f not in traj_df.columns]
     if missing_fields:
         raise ValueError(f"❌ 轨迹数据缺少必要字段: {missing_fields}")
@@ -240,12 +240,15 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     
     results = []
     
-    # 按车道段分组
-    for lane_id_str, lane_group in traj_df.groupby('FID'):
-        try:
-            lane_id = int(float(lane_id_str))
-        except (ValueError, TypeError):
-            continue
+    # 获取所有车道段ID
+    all_lane_ids = set(graph_dict.keys())
+    
+    # 将FID转换为整数，方便匹配
+    traj_df['FID_int'] = traj_df['FID'].apply(lambda x: int(float(x)) if x else -1)
+    
+    # 对每个车道段和每个时间窗口进行统计
+    for lane_id in all_lane_ids:
+        lane_group = traj_df[traj_df['FID_int'] == lane_id]
         
         # 对该车道段的每个时间窗口进行统计
         for window_start, window_end in time_windows:
@@ -255,17 +258,35 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                 (lane_group['frame'] < window_end)
             ].copy()
             
+            # 如果没有车辆经过，写入默认值
             if window_data.empty:
+                # 检查该路段是否有对应的连接类型，如果没有则设为-1
+                connections = graph_dict.get(lane_id, {})
+                has_crossing = len(connections.get('crossing', set())) > 0
+                has_direct = len(connections.get('direct', set())) > 0
+                has_near = len(connections.get('near', set())) > 0
+                
+                results.append({
+                    'lane_id': lane_id,
+                    'start_frame': window_start,
+                    'avg_speed': -1,
+                    'avg_occupancy': 0,
+                    'total_vehicles': 0,
+                    'car_ratio': 0,
+                    'medium_ratio': 0,
+                    'heavy_ratio': 0,
+                    'motorcycle_ratio': 0,
+                    'crossing_ratio': 0 if has_crossing else -1,
+                    'direct_ratio': 0 if has_direct else -1,
+                    'near_ratio': 0 if has_near else -1
+                })
                 continue
             
             # 统计基本信息
             unique_vehicles = window_data['id'].nunique()
             
             # 计算平均速度
-            if 'v' in window_data.columns:
-                avg_speed = window_data['v'].mean()
-            else:
-                avg_speed = 0.0
+            avg_speed = window_data['v'].mean()
             
             # 计算平均占用率（需要统计每一帧的占用率，然后求平均）
             frame_occupancies = []
@@ -312,25 +333,40 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                     trajectory_type_counts[traj_type] += 1
             
             # 计算轨迹类型比例
+            # 检查该路段是否有对应的连接类型，如果没有则设为-1
+            connections = graph_dict.get(lane_id, {})
+            has_crossing = len(connections.get('crossing', set())) > 0
+            has_direct = len(connections.get('direct', set())) > 0
+            has_near = len(connections.get('near', set())) > 0
+            
             total_classified = sum(trajectory_type_counts.values())
-            crossing_ratio = trajectory_type_counts.get('crossing', 0) / total_classified if total_classified > 0 else 0.0
-            direct_ratio = trajectory_type_counts.get('direct', 0) / total_classified if total_classified > 0 else 0.0
-            near_ratio = trajectory_type_counts.get('near', 0) / total_classified if total_classified > 0 else 0.0
+            if has_crossing:
+                crossing_ratio = trajectory_type_counts.get('crossing', 0) / total_classified if total_classified > 0 else 0.0
+            else:
+                crossing_ratio = -1
+            if has_direct:
+                direct_ratio = trajectory_type_counts.get('direct', 0) / total_classified if total_classified > 0 else 0.0
+            else:
+                direct_ratio = -1
+            if has_near:
+                near_ratio = trajectory_type_counts.get('near', 0) / total_classified if total_classified > 0 else 0.0
+            else:
+                near_ratio = -1
             
             # 保存结果
             results.append({
                 'lane_id': lane_id,
                 'start_frame': window_start,
-                'avg_speed': avg_speed,
-                'avg_occupancy': avg_occupancy,
+                'avg_speed': round(avg_speed, 2),
+                'avg_occupancy': round(avg_occupancy, 2),
                 'total_vehicles': unique_vehicles,
-                'car_ratio': car_ratio,
-                'medium_ratio': medium_ratio,
-                'heavy_ratio': heavy_ratio,
-                'motorcycle_ratio': motorcycle_ratio,
-                'crossing_ratio': crossing_ratio,
-                'direct_ratio': direct_ratio,
-                'near_ratio': near_ratio
+                'car_ratio': round(car_ratio, 2),
+                'medium_ratio': round(medium_ratio, 2),
+                'heavy_ratio': round(heavy_ratio, 2),
+                'motorcycle_ratio': round(motorcycle_ratio, 2),
+                'crossing_ratio': round(crossing_ratio, 2),
+                'direct_ratio': round(direct_ratio, 2),
+                'near_ratio': round(near_ratio, 2)
             })
     
     # =================== Step 4: 保存结果 ===================
