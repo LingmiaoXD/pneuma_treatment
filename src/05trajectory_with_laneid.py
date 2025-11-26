@@ -56,6 +56,13 @@ if __name__ == "__main__":
     print("正在进行空间连接...")
     # 使用空间连接找出每个点在哪个面要素内
     joined = gpd.sjoin(traj_gdf, lane_gdf, how='left', predicate='within')
+
+    print(f"📊 空间连接匹配情况:")
+    print(f"   - 总轨迹点数: {len(traj_gdf)}")
+    print(f"   - 匹配上的点数: {joined['index_right'].notna().sum()}")
+    print(f"   - lane_gdf 的 id 字段非空数: {lane_gdf['id'].notna().sum()}")
+    print(f"   - lane_gdf CRS: {lane_gdf.crs}")
+    print(f"   - traj_gdf CRS: {traj_gdf.crs}")
     
     # 如果有多行匹配（一个点匹配多个面），只保留第一个匹配
     # 使用索引来匹配回原始的traj_df
@@ -94,7 +101,7 @@ if __name__ == "__main__":
     # 立即过滤掉没有匹配上车道段ID的记录，避免后续冗余计算
     print("正在过滤数据，只保留有车道段ID的记录...")
     original_count = len(traj_df)
-    traj_df = traj_df[traj_df['FID'].notna()].copy()
+    traj_df = traj_df[traj_df['FID'].notna() & (traj_df['FID'] != 'nan')].copy()
     filtered_count = len(traj_df)
     print(f"过滤前: {original_count} 条记录，过滤后: {filtered_count} 条记录")
     
@@ -109,7 +116,16 @@ if __name__ == "__main__":
             on='id',
             how='left'
         )
-        traj_df['car_type'] = traj_df['type']
+        # 类型映射：Car/Taxi -> car, Bus/Medium Vehicle -> medium, Heavy Vehicle -> heavy, Motorcycle -> motorcycle
+        type_mapping = {
+            'Car': 'car',
+            'Taxi': 'car',
+            'Bus': 'medium',
+            'Medium Vehicle': 'medium',
+            'Heavy Vehicle': 'heavy',
+            'Motorcycle': 'motorcycle'
+        }
+        traj_df['car_type'] = traj_df['type'].map(type_mapping)
         traj_df = traj_df.drop(columns=['type'])
     else:
         print("警告: 元数据中未找到type字段")

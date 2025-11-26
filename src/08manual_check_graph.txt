@@ -1,0 +1,61 @@
+手动检查，把crossing补上。
+
+示例：
+{
+  "nodes": [
+    {
+      "lane_id": 10,
+      "node_connections": {
+        "near": [
+          18
+        ],
+        "crossing": [
+          95
+        ]
+      }
+    },
+    {
+      "lane_id": 100,
+      "node_connections": {
+        "direct": [
+          99
+        ]
+      }
+    },
+    {
+      "lane_id": 102,
+      "node_connections": {
+        "direct": [
+          103
+        ],
+        "near": [
+          108,
+          109
+        ]
+      }
+    },
+     {
+      "lane_id": 18,
+      "node_connections": {
+        "crossing": [
+          102
+        ],
+        "near": [
+          38
+        ]
+      }
+    },
+    {
+      "lane_id": 26,
+      "node_connections": {
+        "crossing": [
+          95,
+          82
+        ],
+        "near": [
+          9
+        ]
+      }
+    }
+  ]
+}
