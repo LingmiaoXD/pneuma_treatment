@@ -123,8 +123,8 @@ def main(transitions_csv_path, output_json_path):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRANSITIONS_CSV_PATH = r"../data/road_graph/d210240830_transitions.csv"  # 车道段变动统计CSV
-    OUTPUT_JSON = r"../data/road_graph/d210240830_graph.json"  # 输出路径
+    TRANSITIONS_CSV_PATH = r"../data/road_graph/d210240930_transitions.csv"  # 车道段变动统计CSV
+    OUTPUT_JSON = r"../data/road_graph/d210240930_graph.json"  # 输出路径
 
     # 执行构建
     main(TRANSITIONS_CSV_PATH, OUTPUT_JSON)

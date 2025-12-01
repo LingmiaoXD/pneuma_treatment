@@ -1,5 +1,6 @@
 data/derived/*
 data/ok_data/*
+data/ok_data_2/*
 data/raw_data/*
 data/trajectory_with_laneid/*
 data/road_graph/*

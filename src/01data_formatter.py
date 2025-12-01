@@ -6,6 +6,12 @@ from tqdm import tqdm
 # Specify the paths to the raw data from a single day.
 PATH = "../data/raw_data"
 
+# ========== 经纬度偏移纠正配置 ==========
+# 手动设置偏移值来纠正经纬度的小幅线性偏移
+LON_OFFSET = -0.00009  # 经度偏移值（度）
+LAT_OFFSET = 0.000032  # 纬度偏移值（度）
+# ======================================
+
 from tempfile import TemporaryFile
 
 
@@ -19,8 +25,9 @@ def list_to_df(temp):
     for i in range(
         3, len(temp) - 6, 6
     ):  # start range from 3 for sample, and 7 for complete. Check this to make it consistent with the format of raw data
-        lon.append(temp[i + 2])  # check lat
-        lat.append(temp[i + 1])  # check lon
+        # 应用偏移纠正
+        lon.append(float(temp[i + 2]) + LON_OFFSET)  # check lat
+        lat.append(float(temp[i + 1]) + LAT_OFFSET)  # check lon
         v.append(temp[i + 3])
         a_x.append(temp[i + 4])
         a_y.append(temp[i + 5])

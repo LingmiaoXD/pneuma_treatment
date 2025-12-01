@@ -120,8 +120,8 @@ def main(traj_csv_path, output_csv_path):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240830.csv"         # 轨迹数据，需包含 id, frame, FID 等字段（FID字段存储车道段id值）
-    OUTPUT_CSV = r"../data/road_graph/d210240830_transitions.csv"      # 输出路径
+    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240930.csv"         # 轨迹数据，需包含 id, frame, FID 等字段（FID字段存储车道段id值）
+    OUTPUT_CSV = r"../data/road_graph/d210240930_transitions.csv"      # 输出路径
 
     # 执行统计
     main(TRAJ_CSV_PATH, OUTPUT_CSV)
