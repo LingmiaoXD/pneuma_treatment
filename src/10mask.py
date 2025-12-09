@@ -45,7 +45,7 @@ def generate_lane_mask_csv(shp_path, mask_csv_path, output_path):
 
 if __name__ == "__main__":
     shp_path = r"../plots/buffer/buffer_small_crossing_2.shp"
-    mask_csv_path = r"../data/lane_node_stats/d210240900_raw_mask.csv"
-    output_path = r"../data/lane_node_stats/d210240900_lane_mask.csv"
+    mask_csv_path = r"../data/lane_node_stats/d210291000_raw_mask.csv"
+    output_path = r"../data/lane_node_stats/d210291000_lane_mask.csv"
     
     generate_lane_mask_csv(shp_path, mask_csv_path, output_path)

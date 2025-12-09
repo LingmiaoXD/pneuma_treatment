@@ -401,9 +401,9 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240930.csv"  # 轨迹数据
+    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210291000.csv"  # 轨迹数据
     GRAPH_JSON_PATH = r"../data/road_graph/graph.json"  # 图结构（如果不存在，尝试使用graph.json）
-    OUTPUT_CSV = r"../data/lane_node_stats/d210240930_lane_node_stats.csv"  # 输出路径
+    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"  # 输出路径
     
     # 如果指定的graph.json不存在，尝试使用默认的graph.json
     if not os.path.exists(GRAPH_JSON_PATH):
