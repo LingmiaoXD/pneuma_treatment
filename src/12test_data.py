@@ -3,14 +3,14 @@
 12test_data.py
 
 根据lane_mask过滤lane_node_stats，生成测试数据
-只保留标注为有数据的节点（is_observed == 1）
+只保留标注为盲点区域的节点（is_observed == 0），便于对预测插补结果的正确性进行评估
 
 输入：
 - lane_node_stats CSV（来自09lane_node.py），包含完整的车道段统计数据
 - lane_mask CSV（来自10mask.py），包含每个车道段在每个时间窗口的观测状态
 
 输出：
-- 测试数据CSV，格式与lane_node_stats完全一样，但只包含有数据的节点
+- 测试数据CSV，格式与lane_node_stats完全一样，但只包含盲点区域的节点
 """
 
 import os
@@ -20,6 +20,7 @@ import pandas as pd
 def generate_test_data(lane_node_stats_path, lane_mask_path, output_path):
     """
     根据lane_mask过滤lane_node_stats，生成测试数据
+    只保留盲点区域（is_observed == 0）的数据，用于评估预测插补结果
     
     参数:
         lane_node_stats_path: str, lane_node_stats CSV文件路径
@@ -63,7 +64,7 @@ def generate_test_data(lane_node_stats_path, lane_mask_path, output_path):
     mask_df['is_observed'] = mask_df['is_observed'].astype(int)
     
     # =================== Step 3: 合并数据并过滤 ===================
-    print("🔄 正在合并数据并过滤有数据的节点...")
+    print("🔄 正在合并数据并过滤盲点区域的节点...")
     
     # 将stats_df和mask_df合并，基于lane_id和start_frame
     merged_df = stats_df.merge(
@@ -72,8 +73,8 @@ def generate_test_data(lane_node_stats_path, lane_mask_path, output_path):
         how='inner'
     )
     
-    # 只保留is_observed == 1的记录
-    filtered_df = merged_df[merged_df['is_observed'] == 1].copy()
+    # 只保留is_observed == 0的记录（盲点区域）
+    filtered_df = merged_df[merged_df['is_observed'] == 0].copy()
     
     # 删除is_observed列（因为输出格式要与lane_node_stats完全一样）
     filtered_df = filtered_df.drop(columns=['is_observed'])
@@ -90,10 +91,10 @@ def generate_test_data(lane_node_stats_path, lane_mask_path, output_path):
     # 保存CSV文件
     filtered_df.to_csv(output_path, index=False, encoding='utf-8')
     
-    print(f"🎉 测试数据已保存至: {output_path}")
+    print(f"🎉 盲点区域测试数据已保存至: {output_path}")
     print(f"📊 原始记录数: {len(stats_df)}")
-    print(f"📊 过滤后记录数: {len(filtered_df)}")
-    print(f"📊 数据减少比例: {1 - len(filtered_df) / len(stats_df):.2%}")
+    print(f"📊 盲点区域记录数: {len(filtered_df)}")
+    print(f"📊 盲点区域占比: {len(filtered_df) / len(stats_df):.2%}")
     print(f"📊 涉及车道段数: {filtered_df['lane_id'].nunique()}")
     print(f"📊 时间窗口数: {filtered_df['start_frame'].nunique()}")
     
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     
     LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"  # 完整的lane_node_stats
     LANE_MASK_PATH = r"../data/lane_node_stats/d210291000_lane_mask.csv"  # lane_mask
-    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_test_data.csv"  # 输出路径
+    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_test_data.csv"  # 输出路径（盲点区域数据，用于评估）
     
     # 检查文件是否存在
     if not os.path.exists(LANE_NODE_STATS_PATH):
@@ -116,6 +117,7 @@ if __name__ == "__main__":
     
     # 执行生成
     generate_test_data(LANE_NODE_STATS_PATH, LANE_MASK_PATH, OUTPUT_CSV)
+
 
 
 
