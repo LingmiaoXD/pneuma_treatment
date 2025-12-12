@@ -10,10 +10,10 @@ from shapefile_utils import read_shapefile_with_fallback
 
 
 if __name__ == "__main__":
-    LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_2.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"../data/ok_data/d210291000.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
-    TRAJ_META_PATH = r"../data/ok_data/meta_d210291000.csv"        # 轨迹元数据，含 id,type等字段
-    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210291000.csv"          # 输出路径
+    LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_4.shp"        # 车道段面数据
+    TRAJ_CSV_PATH = r"../data/ok_data/d210240930.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
+    TRAJ_META_PATH = r"../data/ok_data/meta_d210240930.csv"        # 轨迹元数据，含 id,type等字段
+    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210240930.csv"          # 输出路径
     
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)

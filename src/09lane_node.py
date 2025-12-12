@@ -2,14 +2,14 @@
 """
 09lane_node.py
 
-按照车道段ID和时间帧统计每10秒当前车道段内的交通状况
+按照车道段ID和时间帧统计每1秒当前车道段内的交通状况
 
 输入：
 - 轨迹CSV（来自05trajectory_with_laneid.py），包含 id, frame, FID, car_type, v 等字段
 - graph.json（道路图结构）
 
 输出：
-- CSV文件，每行代表一个车道段在10秒内的交通状况
+- CSV文件，每行代表一个车道段在1秒内的交通状况
 """
 
 import os
@@ -21,7 +21,7 @@ from collections import defaultdict
 
 # =================== 配置参数 ===================
 # 路段长度（米），方便开发者调试
-LANE_LENGTH = 10.0  # 默认10米
+LANE_LENGTH = 40.0  # 默认40米
 
 # 车辆类型占用长度（米）
 VEHICLE_LENGTHS = {
@@ -32,7 +32,7 @@ VEHICLE_LENGTHS = {
 }
 
 # 时间窗口大小（秒）
-TIME_WINDOW = 10.0
+TIME_WINDOW = 1.0
 
 
 def load_graph(graph_json_path):
@@ -226,7 +226,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     min_frame = traj_df['frame'].min()
     max_frame = traj_df['frame'].max()
     
-    # 生成时间窗口（每10秒一个窗口）
+    # 生成时间窗口（每1秒一个窗口）
     time_windows = []
     current_start = min_frame
     while current_start <= max_frame:
@@ -260,12 +260,6 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             
             # 如果没有车辆经过，写入默认值
             if window_data.empty:
-                # 检查该路段是否有对应的连接类型，如果没有则设为-1
-                connections = graph_dict.get(lane_id, {})
-                has_crossing = len(connections.get('crossing', set())) > 0
-                has_direct = len(connections.get('direct', set())) > 0
-                has_near = len(connections.get('near', set())) > 0
-                
                 results.append({
                     'lane_id': lane_id,
                     'start_frame': window_start,
@@ -275,10 +269,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                     'car_ratio': 0,
                     'medium_ratio': 0,
                     'heavy_ratio': 0,
-                    'motorcycle_ratio': 0,
-                    'crossing_ratio': 0 if has_crossing else -1,
-                    'direct_ratio': 0 if has_direct else -1,
-                    'near_ratio': 0 if has_near else -1
+                    'motorcycle_ratio': 0
                 })
                 continue
             
@@ -313,46 +304,6 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             heavy_ratio = car_type_counts.get('heavy', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
             motorcycle_ratio = car_type_counts.get('motorcycle', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
             
-            # 统计轨迹类型（crossing, direct, near）
-            trajectory_type_counts = defaultdict(int)
-            
-            # 对于每个车辆，找到它在当前车道段之后下一个经过的车道段
-            for vehicle_id in window_data['id'].unique():
-                # 获取该车辆在该时间窗口内经过当前车道段的所有时间点
-                vehicle_in_window = window_data[window_data['id'] == vehicle_id].sort_values('frame')
-                if vehicle_in_window.empty:
-                    continue
-                
-                # 使用最后一个时间点（车辆离开当前车道段的时间）来查找下一个车道段
-                last_frame = vehicle_in_window.iloc[-1]['frame']
-                next_lane_id = get_next_lane_for_vehicle(traj_df, vehicle_id, lane_id, last_frame)
-                
-                # 判断轨迹类型
-                traj_type = classify_trajectory_type(lane_id, next_lane_id, graph_dict)
-                if traj_type is not None:
-                    trajectory_type_counts[traj_type] += 1
-            
-            # 计算轨迹类型比例
-            # 检查该路段是否有对应的连接类型，如果没有则设为-1
-            connections = graph_dict.get(lane_id, {})
-            has_crossing = len(connections.get('crossing', set())) > 0
-            has_direct = len(connections.get('direct', set())) > 0
-            has_near = len(connections.get('near', set())) > 0
-            
-            total_classified = sum(trajectory_type_counts.values())
-            if has_crossing:
-                crossing_ratio = trajectory_type_counts.get('crossing', 0) / total_classified if total_classified > 0 else 0.0
-            else:
-                crossing_ratio = -1
-            if has_direct:
-                direct_ratio = trajectory_type_counts.get('direct', 0) / total_classified if total_classified > 0 else 0.0
-            else:
-                direct_ratio = -1
-            if has_near:
-                near_ratio = trajectory_type_counts.get('near', 0) / total_classified if total_classified > 0 else 0.0
-            else:
-                near_ratio = -1
-            
             # 保存结果
             results.append({
                 'lane_id': lane_id,
@@ -363,10 +314,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                 'car_ratio': round(car_ratio, 2),
                 'medium_ratio': round(medium_ratio, 2),
                 'heavy_ratio': round(heavy_ratio, 2),
-                'motorcycle_ratio': round(motorcycle_ratio, 2),
-                'crossing_ratio': round(crossing_ratio, 2),
-                'direct_ratio': round(direct_ratio, 2),
-                'near_ratio': round(near_ratio, 2)
+                'motorcycle_ratio': round(motorcycle_ratio, 2)
             })
     
     # =================== Step 4: 保存结果 ===================

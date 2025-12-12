@@ -26,7 +26,7 @@ import pandas as pd
 # =================== 用户可修改参数区域 ===================
 
 # 真值的CSV 路径
-LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"
+LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_test_data.csv"
 
 # 测试数据（模型结果）CSV 路径
 OUTPUT_CSV_PATH = r"../data/lane_node_stats/imputed_results.csv"
