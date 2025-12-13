@@ -9,7 +9,7 @@
 输出：打印有差异的节点的lane_id
 
 调用方法：
-python 08audo_compare_graph.py ../data/road_graph/d210240830_graph.json ../data/road_graph/d210240900_graph.json
+python 08audo_compare_graph.py ../data/road_graph/d210240900_graph.json ../data/road_graph/d210240930_graph.json
 """
 
 import json

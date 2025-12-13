@@ -5,6 +5,7 @@ data/raw_data/*
 data/trajectory_with_laneid/*
 data/road_graph/*
 data/lane_node_stats/*
+data/lane_node_stats_old/*
 plots/*
 .pneuma_env/
 !data/derived/.gitkeep 
