@@ -146,21 +146,21 @@ def generate_lane_mask_from_params(shp_path, output_path,
 
 if __name__ == "__main__":
     shp_path = r"../plots/buffer/buffer_small_crossing_4.shp"
-    output_path = r"../data/lane_node_stats/d210291000_lane_mask.csv"
+    output_path = r"../data/lane_node_stats/d210240930_lane_mask.csv"
     
     # 方式1: 如果没有raw_mask文件，自动生成并保存
     generate_lane_mask_from_params(
         shp_path=shp_path,
         output_path=output_path,
         mask_csv_path=None,  # 不提供路径，自动生成
-        start_frame_range=(0, 830),
+        start_frame_range=(0, 936),
         show_values=[0, 1, 2, 3],
-        start_show_index=2,  # 从[2]开始
+        start_show_index=0,  # 从[0]开始
         duration=5  # 每个值持续5个frame
     )
     
     # 方式2: 如果已有raw_mask文件，直接提供路径，跳过生成步骤
-    # mask_csv_path = r"../data/lane_node_stats/d210291000_raw_mask.csv"
+    # mask_csv_path = r"../data/lane_node_stats/d210291000_raw_mask_5.csv"
     # generate_lane_mask_from_params(
     #     shp_path=shp_path,
     #     output_path=output_path,
