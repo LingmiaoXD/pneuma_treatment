@@ -29,14 +29,14 @@ import pandas as pd
 LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_test_data.csv"
 
 # 测试数据（模型结果）CSV 路径
-OUTPUT_CSV_PATH = r"../data/lane_node_stats/imputed_results.csv"
+OUTPUT_CSV_PATH = r"../data/lane_node_stats/imputed_results_3.csv"
 
 # 可选：要参与比较的指标列列表；
 # 如果为 None，则自动从两个文件的公共数值型列中推断（排除 lane_id, start_frame）。
 VALUE_COLUMNS: Optional[List[str]] = None
 
 # 可选：结果指标输出路径；如果为 None，则只在屏幕上打印，不另存文件。
-REPORT_PATH: Optional[str] = r"../data/lane_node_stats/d210291000_metrics.csv"
+REPORT_PATH: Optional[str] = r"../data/lane_node_stats/d210291000_metrics_3.csv"
 
 # =====================================================
 

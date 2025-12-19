@@ -32,7 +32,7 @@ VEHICLE_LENGTHS = {
 }
 
 # 时间窗口大小（秒）
-TIME_WINDOW = 1.0
+TIME_WINDOW = 0.04
 
 
 def load_graph(graph_json_path):
@@ -263,7 +263,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                 results.append({
                     'lane_id': lane_id,
                     'start_frame': window_start,
-                    'avg_speed': -1,
+                    'avg_speed': None,
                     'avg_occupancy': 0,
                     'total_vehicles': 0,
                     'car_ratio': 0,
@@ -276,8 +276,13 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             # 统计基本信息
             unique_vehicles = window_data['id'].nunique()
             
-            # 计算平均速度
-            avg_speed = window_data['v'].mean()
+            # 计算平均速度（绝对值，单位：km/h）
+            avg_speed = window_data['v'].abs().mean()
+            # 如果平均速度为NaN，则设为None（空值）
+            if pd.isna(avg_speed):
+                avg_speed = None
+            else:
+                avg_speed = round(avg_speed, 2)
             
             # 计算平均占用率（需要统计每一帧的占用率，然后求平均）
             frame_occupancies = []
@@ -308,7 +313,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             results.append({
                 'lane_id': lane_id,
                 'start_frame': window_start,
-                'avg_speed': round(avg_speed, 2),
+                'avg_speed': avg_speed,
                 'avg_occupancy': round(avg_occupancy, 2),
                 'total_vehicles': unique_vehicles,
                 'car_ratio': round(car_ratio, 2),
@@ -328,10 +333,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     results_df = results_df.sort_values(['lane_id', 'start_frame']).reset_index(drop=True)
     
     # =================== 归一化处理 ===================
-    # avg_speed: -1保持为1（畅通无阻），其他按0~100归一化到0~1
-    results_df['avg_speed'] = results_df['avg_speed'].apply(
-        lambda x: 1.0 if x == -1 else round(min(max(x / 100.0, 0.0), 1.0), 2)
-    )
+    # avg_speed: 不进行归一化，保持原始值（km/h），空值保持为空值
     
     # total_vehicles: 按对数变换 + 归一化
     results_df['total_vehicles'] = results_df['total_vehicles'].apply(
