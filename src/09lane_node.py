@@ -266,10 +266,10 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                     'avg_speed': None,
                     'avg_occupancy': 0,
                     'total_vehicles': 0,
-                    'car_ratio': 0,
-                    'medium_ratio': 0,
-                    'heavy_ratio': 0,
-                    'motorcycle_ratio': 0
+                    # 'car_ratio': 0,
+                    # 'medium_ratio': 0,
+                    # 'heavy_ratio': 0,
+                    # 'motorcycle_ratio': 0
                 })
                 continue
             
@@ -293,21 +293,21 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             avg_occupancy = np.mean(frame_occupancies) if frame_occupancies else 0.0
             
             # 统计车辆类型数量和比例（按唯一车辆统计）
-            car_type_counts = defaultdict(int)
-            if 'car_type' in window_data.columns:
-                # 对每个唯一车辆，获取其车辆类型（如果有多个记录，取第一个）
-                for vehicle_id in window_data['id'].unique():
-                    vehicle_data = window_data[window_data['id'] == vehicle_id]
-                    if not vehicle_data.empty:
-                        car_type = vehicle_data.iloc[0]['car_type']
-                        if pd.notna(car_type):
-                            car_type_str = str(car_type).lower().strip()
-                            car_type_counts[car_type_str] += 1
+            # car_type_counts = defaultdict(int)
+            # if 'car_type' in window_data.columns:
+            #     # 对每个唯一车辆，获取其车辆类型（如果有多个记录，取第一个）
+            #     for vehicle_id in window_data['id'].unique():
+            #         vehicle_data = window_data[window_data['id'] == vehicle_id]
+            #         if not vehicle_data.empty:
+            #             car_type = vehicle_data.iloc[0]['car_type']
+            #             if pd.notna(car_type):
+            #                 car_type_str = str(car_type).lower().strip()
+            #                 car_type_counts[car_type_str] += 1
             
-            car_ratio = car_type_counts.get('car', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
-            medium_ratio = car_type_counts.get('medium', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
-            heavy_ratio = car_type_counts.get('heavy', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
-            motorcycle_ratio = car_type_counts.get('motorcycle', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
+            # car_ratio = car_type_counts.get('car', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
+            # medium_ratio = car_type_counts.get('medium', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
+            # heavy_ratio = car_type_counts.get('heavy', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
+            # motorcycle_ratio = car_type_counts.get('motorcycle', 0) / unique_vehicles if unique_vehicles > 0 else 0.0
             
             # 保存结果
             results.append({
@@ -316,10 +316,10 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
                 'avg_speed': avg_speed,
                 'avg_occupancy': round(avg_occupancy, 2),
                 'total_vehicles': unique_vehicles,
-                'car_ratio': round(car_ratio, 2),
-                'medium_ratio': round(medium_ratio, 2),
-                'heavy_ratio': round(heavy_ratio, 2),
-                'motorcycle_ratio': round(motorcycle_ratio, 2)
+                # 'car_ratio': round(car_ratio, 2),
+                # 'medium_ratio': round(medium_ratio, 2),
+                # 'heavy_ratio': round(heavy_ratio, 2),
+                # 'motorcycle_ratio': round(motorcycle_ratio, 2)
             })
     
     # =================== Step 4: 保存结果 ===================
