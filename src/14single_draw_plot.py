@@ -126,11 +126,11 @@ def main():
     # 配置路径（相对于项目根目录）
     buffer_shp_path = os.path.join(project_root, "plots/buffer/buffer_small_crossing_3_area.shp")
     stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210291000_lane_node_stats.csv")
-    output_shp_path = os.path.join(project_root, "plots/inference/d210291000_buffer_32.shp")
+    output_shp_path = os.path.join(project_root, "plots/inference/d210291000_buffer_50.shp")
     
     # 指定要筛选的 start_frame 值
     # 可以修改这个值来筛选不同时间段的数据
-    target_start_frame = 32
+    target_start_frame = 50
     
     # 执行合并
     result = create_buffer_with_stats(
