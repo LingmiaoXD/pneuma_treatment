@@ -102,6 +102,12 @@ def create_buffer_with_stats(
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
+    # 处理空值：将数值字段中的 NaN 转换为 -1
+    numeric_cols = ['avg_speed', 'avg_occupancy', 'total_vehicles']
+    for col in numeric_cols:
+        if col in merged_gdf.columns:
+            merged_gdf[col] = merged_gdf[col].fillna(-1)
+    
     merged_gdf.to_file(output_shp_path, driver='ESRI Shapefile', encoding='utf-8')
     
     if verbose:
@@ -118,13 +124,13 @@ def main():
     project_root = os.path.dirname(script_dir)
     
     # 配置路径（相对于项目根目录）
-    buffer_shp_path = os.path.join(project_root, "plots/buffer/buffer_small_crossing_3.shp")
+    buffer_shp_path = os.path.join(project_root, "plots/buffer/buffer_small_crossing_3_area.shp")
     stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210291000_lane_node_stats.csv")
-    output_shp_path = os.path.join(project_root, "plots/buffer/d210291000_buffer_1.shp")
+    output_shp_path = os.path.join(project_root, "plots/inference/d210291000_buffer_32.shp")
     
     # 指定要筛选的 start_frame 值
     # 可以修改这个值来筛选不同时间段的数据
-    target_start_frame = 1
+    target_start_frame = 32
     
     # 执行合并
     result = create_buffer_with_stats(
