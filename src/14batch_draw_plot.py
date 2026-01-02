@@ -5,12 +5,10 @@
 批量生成分级色彩地图，遍历 CSV 中所有 start_frame 值，
 为每个 start_frame 生成对应的 PNG 格式地图。
 
-分级色彩规则（可自定义字段）:
-    - 灰色: < 0 (无数据)
-    - 红色: >= 0 且 < 5
-    - 橙色: >= 5 且 < 15
-    - 黄色: >= 15 且 < 30
-    - 绿色: >= 30 且 < 120
+连续渐变色彩规则（可自定义字段）:
+    - 灰色: < 0 或无数据
+    - 连续渐变: 5=红色, 15=橙色, 30=黄色, 60=绿色, 120=深绿色
+    - 中间值为连续过渡颜色
 
 输入:
     - plots/buffer/buffer_small_crossing_3_area.shp: 基础 shapefile
@@ -25,32 +23,55 @@ import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from matplotlib.colors import ListedColormap, BoundaryNorm
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.colorbar as mcolorbar
 import numpy as np
 from shapefile_utils import read_shapefile_with_fid
 
 
-def get_color_classification(value):
-    """
-    根据值返回分级颜色
+# 定义连续渐变色的关键点: 5=红色, 15=橙色, 30=黄色, 60=绿色, 120=深绿色
+COLOR_ANCHORS = [
+    (5, '#FF0000'),    # 红色
+    (15, '#FFA500'),   # 橙色
+    (30, '#FFFF00'),   # 黄色
+    (60, '#00FF00'),   # 绿色
+    (120, '#006400'),  # 深绿色
+]
+
+# 创建连续渐变 colormap
+def create_continuous_colormap():
+    """创建从红到深绿的连续渐变 colormap"""
+    values = [anchor[0] for anchor in COLOR_ANCHORS]
+    colors = [anchor[1] for anchor in COLOR_ANCHORS]
     
-    分级规则:
-        - 灰色: < 0 (无数据)
-        - 红色: >= 0 且 < 5
-        - 橙色: >= 5 且 < 15
-        - 黄色: >= 15 且 < 30
-        - 绿色: >= 30 且 < 120
+    # 归一化到 0-1 范围
+    min_val, max_val = values[0], values[-1]
+    normalized = [(v - min_val) / (max_val - min_val) for v in values]
+    
+    # 创建 colormap
+    cmap = LinearSegmentedColormap.from_list('speed_cmap', list(zip(normalized, colors)))
+    return cmap, min_val, max_val
+
+
+def get_continuous_color(value, cmap, vmin, vmax):
+    """
+    根据值返回连续渐变颜色
+    
+    规则:
+        - 灰色: < 0 或无数据
+        - 连续渐变: 5=红色, 15=橙色, 30=黄色, 60=绿色, 120=深绿色
     """
     if pd.isna(value) or value < 0:
         return '#808080'  # 灰色
-    elif value < 5:
-        return '#FF0000'  # 红色
-    elif value < 15:
-        return '#FFA500'  # 橙色
-    elif value < 30:
-        return '#FFFF00'  # 黄色
-    else:
-        return '#00FF00'  # 绿色
+    
+    # 将值限制在范围内
+    clamped = max(vmin, min(vmax, value))
+    # 归一化
+    normalized = (clamped - vmin) / (vmax - vmin)
+    # 获取颜色
+    rgba = cmap(normalized)
+    # 转换为 hex
+    return '#{:02x}{:02x}{:02x}'.format(int(rgba[0]*255), int(rgba[1]*255), int(rgba[2]*255))
 
 
 def create_map_for_frame(
@@ -98,8 +119,13 @@ def create_map_for_frame(
         how='left'
     )
     
-    # 计算每个要素的颜色
-    merged_gdf['color'] = merged_gdf[color_field].apply(get_color_classification)
+    # 创建连续渐变 colormap
+    cmap, vmin, vmax = create_continuous_colormap()
+    
+    # 计算每个要素的颜色（连续渐变）
+    merged_gdf['color'] = merged_gdf[color_field].apply(
+        lambda v: get_continuous_color(v, cmap, vmin, vmax)
+    )
     
     # 创建图形
     fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -112,15 +138,18 @@ def create_map_for_frame(
         linewidth=0.3
     )
     
-    # 创建图例
-    legend_elements = [
-        mpatches.Patch(facecolor='#808080', edgecolor='black', label='nodata (< 0)'),
-        mpatches.Patch(facecolor='#FF0000', edgecolor='black', label='0 - 5'),
-        mpatches.Patch(facecolor='#FFA500', edgecolor='black', label='5 - 15'),
-        mpatches.Patch(facecolor='#FFFF00', edgecolor='black', label='15 - 30'),
-        mpatches.Patch(facecolor='#00FF00', edgecolor='black', label='30 - 120'),
-    ]
-    ax.legend(handles=legend_elements, loc='upper right', title=color_field)
+    # 创建连续渐变色条 (colorbar) 在右下角
+    # 添加一个小的 axes 用于 colorbar
+    cbar_ax = fig.add_axes([0.72, 0.15, 0.02, 0.25])  # [left, bottom, width, height]
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=vmin, vmax=vmax))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.set_label(color_field, fontsize=10)
+    cbar.set_ticks([5, 15, 30, 60, 120])
+    
+    # 添加灰色图例（无数据）在 colorbar 下方
+    gray_patch = mpatches.Patch(facecolor='#808080', edgecolor='black', label='nodata (< 0)')
+    ax.legend(handles=[gray_patch], loc='lower right', fontsize=9)
     
     # 设置标题
     title = f'{title_prefix}Frame {int(start_frame)} - {color_field}'
@@ -129,8 +158,7 @@ def create_map_for_frame(
     # 移除坐标轴
     ax.set_axis_off()
     
-    # 保存图片
-    plt.tight_layout()
+    # 保存图片 (不使用 tight_layout，因为手动添加的 colorbar axes 不兼容)
     plt.savefig(output_path, dpi=dpi, bbox_inches='tight', facecolor='white')
     plt.close(fig)
     
