@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-根据lane_mask过滤lane_node_stats，生成测试数据
+根据lane_mask过滤lane_node_stats，生成带有波动测试数据
 只保留标注为有数据的节点（is_observed == 1）
 
 输入：
@@ -158,11 +158,11 @@ if __name__ == "__main__":
     
     LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"  # 完整的lane_node_stats
     LANE_MASK_PATH = r"../data/lane_node_stats/d210291000_lane_mask.csv"  # lane_mask
-    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_test_data.csv"  # 输出路径
+    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_noise_data.csv"  # 输出路径
     
     # =================== 波动参数配置 ===================
     # 随机波动幅度比例（0.05表示5%的波动，开发者可根据需要调整）
-    NOISE_RATIO = 0.3
+    NOISE_RATIO = 0.1
     
     # 检查文件是否存在
     if not os.path.exists(LANE_NODE_STATS_PATH):
