@@ -2,14 +2,21 @@
 """
 09lane_node.py
 
-按照车道段ID和时间帧统计每1秒当前车道段内的交通状况
+按照车道段ID和时间帧统计每1秒当前车道段内的交通状况（使用滑动时间窗口）
+
+滑动窗口说明：
+- 输出仍然对应每一秒（如第11秒、第12秒...）
+- 但实际统计的是以该秒为中心的滑动窗口内的平均值
+- 例如：滑动窗口大小为10秒时，第11秒的输出实际统计第6~16秒的数据
+- 输出从第 HALF_WINDOW 秒开始，到倒数第 HALF_WINDOW 秒结束
+  （确保每个输出点都有完整的滑动窗口数据）
 
 输入：
 - 轨迹CSV（来自05trajectory_with_laneid.py），包含 id, frame, FID, car_type, v 等字段
 - graph.json（道路图结构）
 
 输出：
-- CSV文件，每行代表一个车道段在1秒内的交通状况
+- CSV文件，每行代表一个车道段在1秒内的交通状况（基于滑动窗口平均）
 """
 
 import os
@@ -31,8 +38,12 @@ VEHICLE_LENGTHS = {
     'motorcycle': 2.0
 }
 
-# 时间窗口大小（秒）
-TIME_WINDOW = 1
+# 滑动时间窗口大小（秒）
+# 例如设为10秒，则第11秒的统计实际是第6~16秒的平均值
+SLIDING_WINDOW_SIZE = 10
+
+# 滑动窗口半径（自动计算）
+HALF_WINDOW = SLIDING_WINDOW_SIZE // 2
 
 
 def load_graph(graph_json_path):
@@ -226,17 +237,25 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     min_frame = traj_df['frame'].min()
     max_frame = traj_df['frame'].max()
     
-    # 生成时间窗口（每1秒一个窗口）
-    time_windows = []
-    current_start = min_frame
-    while current_start <= max_frame:
-        time_windows.append((current_start, current_start + TIME_WINDOW))
-        current_start += TIME_WINDOW
+    # 使用滑动窗口，输出从第 HALF_WINDOW 秒开始，到倒数第 HALF_WINDOW 秒结束
+    # 确保每个输出点都有完整的滑动窗口数据
+    output_start = min_frame + HALF_WINDOW
+    output_end = max_frame - HALF_WINDOW
     
-    print(f"✅ 共生成 {len(time_windows)} 个时间窗口（{min_frame:.2f} ~ {max_frame:.2f}）")
+    # 生成输出时间点（每1秒一个）
+    output_times = []
+    current_time = output_start
+    while current_time <= output_end:
+        output_times.append(current_time)
+        current_time += 1
+    
+    print(f"✅ 原始数据范围: {min_frame:.2f} ~ {max_frame:.2f}")
+    print(f"✅ 滑动窗口大小: {SLIDING_WINDOW_SIZE} 秒")
+    print(f"✅ 输出时间范围: {output_start:.2f} ~ {output_end:.2f}")
+    print(f"✅ 共生成 {len(output_times)} 个输出时间点")
     
     # =================== Step 3: 按车道段和时间窗口统计 ===================
-    print("📊 正在统计每个车道段在每个时间窗口的交通状况...")
+    print("📊 正在统计每个车道段在每个滑动时间窗口的交通状况...")
     
     results = []
     
@@ -246,13 +265,18 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     # 将FID转换为整数，方便匹配
     traj_df['FID_int'] = traj_df['FID'].apply(lambda x: int(float(x)) if x else -1)
     
-    # 对每个车道段和每个时间窗口进行统计
+    # 对每个车道段和每个输出时间点进行统计
     for lane_id in all_lane_ids:
         lane_group = traj_df[traj_df['FID_int'] == lane_id]
         
-        # 对该车道段的每个时间窗口进行统计
-        for window_start, window_end in time_windows:
-            # 筛选该时间窗口内的数据
+        # 对该车道段的每个输出时间点进行统计
+        for output_time in output_times:
+            # 计算滑动窗口的实际范围
+            # 例如：output_time=11, HALF_WINDOW=5 -> 窗口范围 [6, 16)
+            window_start = output_time - HALF_WINDOW
+            window_end = output_time + HALF_WINDOW
+            
+            # 筛选该滑动窗口内的数据
             window_data = lane_group[
                 (lane_group['frame'] >= window_start) & 
                 (lane_group['frame'] < window_end)
@@ -262,7 +286,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             if window_data.empty:
                 results.append({
                     'lane_id': lane_id,
-                    'start_frame': window_start,
+                    'start_frame': output_time,  # 输出时间点（滑动窗口中心）
                     'avg_speed': None,
                     'avg_occupancy': 0,
                     'total_vehicles': 0,
@@ -312,7 +336,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             # 保存结果
             results.append({
                 'lane_id': lane_id,
-                'start_frame': window_start,
+                'start_frame': output_time,  # 输出时间点（滑动窗口中心）
                 'avg_speed': avg_speed,
                 'avg_occupancy': round(avg_occupancy, 2),
                 'total_vehicles': unique_vehicles,

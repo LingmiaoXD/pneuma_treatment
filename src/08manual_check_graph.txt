@@ -37,8 +37,8 @@
       "segment_length": 40.0,
       "node_connections": {
         "crossing": [
-          {"target": 17, "signal_period": 90.0, "phase_offset": 0.0},
-          {"target": 20, "signal_period": 90.0, "phase_offset": 0.0}
+          {"target": 51, "signal_period": 90.0, "phase_offset": 30.0},
+          {"target": 87, "signal_period": 90.0, "phase_offset": 30.0}
         ],
         "near": [7]
       }
