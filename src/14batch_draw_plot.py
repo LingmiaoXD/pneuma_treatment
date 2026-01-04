@@ -281,10 +281,10 @@ def main():
     
     # 输入文件路径
     buffer_shp_path = os.path.join(project_root, "plots/buffer/buffer_small_crossing_3_area.shp")
-    stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210291000_xhd_03_data.csv")
+    stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210291000_lane_node_stats.csv")
     
     # 输出目录
-    output_dir = os.path.join(project_root, "plots/inference/xhd_maps")
+    output_dir = os.path.join(project_root, "plots/inference/true_maps")
     
     # 分级色彩字段 (可选: 'avg_speed', 'avg_occupancy', 'total_vehicles')
     color_field = 'avg_speed'

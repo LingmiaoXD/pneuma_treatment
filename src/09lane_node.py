@@ -21,7 +21,7 @@ from collections import defaultdict
 
 # =================== 配置参数 ===================
 # 路段长度（米），方便开发者调试
-LANE_LENGTH = 40.0  # 默认40米
+LANE_LENGTH = 10.0  # 默认10米
 
 # 车辆类型占用长度（米）
 VEHICLE_LENGTHS = {

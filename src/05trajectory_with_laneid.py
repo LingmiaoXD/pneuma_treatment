@@ -1,5 +1,5 @@
 # 先处理轨迹数据文件，只留下经过目标buffer的轨迹点，便于后面处理
-# 增加车道段ID和car_type两列
+# 增加FID、lane_id和car_type三列
 
 import pandas as pd
 import geopandas as gpd
@@ -10,10 +10,10 @@ from shapefile_utils import read_shapefile_with_fallback
 
 
 if __name__ == "__main__":
-    LANE_SHP_PATH = r"../plots/buffer/buffer_small_crossing_4.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"../data/ok_data/d210240930.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
-    TRAJ_META_PATH = r"../data/ok_data/meta_d210240930.csv"        # 轨迹元数据，含 id,type等字段
-    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210240930.csv"          # 输出路径
+    LANE_SHP_PATH = r"../plots/buffer_10/d2trajectory_10_Buffer.shp"        # 车道段面数据
+    TRAJ_CSV_PATH = r"../data/ok_data/d210240900.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
+    TRAJ_META_PATH = r"../data/ok_data/meta_d210240900.csv"        # 轨迹元数据，含 id,type等字段
+    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210240900.csv"          # 输出路径
     
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
@@ -60,7 +60,6 @@ if __name__ == "__main__":
     print(f"📊 空间连接匹配情况:")
     print(f"   - 总轨迹点数: {len(traj_gdf)}")
     print(f"   - 匹配上的点数: {joined['index_right'].notna().sum()}")
-    print(f"   - lane_gdf 的 id 字段非空数: {lane_gdf['id'].notna().sum()}")
     print(f"   - lane_gdf CRS: {lane_gdf.crs}")
     print(f"   - traj_gdf CRS: {traj_gdf.crs}")
     
@@ -77,24 +76,40 @@ if __name__ == "__main__":
     # 打印空间连接后的所有列名，用于调试
     print(f"📋 空间连接后 joined 的所有列名: {list(joined.columns)}")
     
-    # 提取车道段ID
-    # 注意：
-    # - 轨迹数据的 'id' 是车辆ID（车辆标识）
-    # - 车道段数据的 'id' 是车道段ID（车道段标识）
-    # - 如果左右两个GeoDataFrame都有'id'字段，右侧的会被重命名为'id_right'
-    # - 因此应该使用 'id_right' 作为车道段ID，而不是 'id'（'id' 是车辆ID）
+    # 调试：打印 lane_gdf 中 FID_ 和 fid 的值范围
+    print(f"📊 lane_gdf 字段值范围调试:")
+    if 'FID_' in lane_gdf.columns:
+        print(f"   - FID_ 范围: {lane_gdf['FID_'].min()} ~ {lane_gdf['FID_'].max()}")
+    if 'fid' in lane_gdf.columns:
+        print(f"   - fid 范围: {lane_gdf['fid'].min()} ~ {lane_gdf['fid'].max()}")
+    if 'lane_id' in lane_gdf.columns:
+        print(f"   - lane_id 范围: {lane_gdf['lane_id'].min()} ~ {lane_gdf['lane_id'].max()}")
     
-    if 'id_right' in joined.columns:
-        # 使用 id_right（来自 lane_gdf 的车道段 id 字段）
-        print("✅ 找到 id_right 字段，使用 id_right 作为车道段ID")
-        traj_df['FID'] = joined['id_right'].astype(str) if hasattr(joined['id_right'], 'astype') else joined['id_right']
+    # 提取车道段ID（使用 FID_ 或 fid 作为连接标识）
+    fid_field = None
+    for field in ['FID_', 'fid']:
+        if field in joined.columns:
+            fid_field = field
+            break
+    
+    if fid_field:
+        print(f"✅ 使用 '{fid_field}' 字段作为车道段FID")
+        # 使用 .values 确保索引对齐
+        traj_df['FID'] = joined[fid_field].values
+        print(f"   - 连接后 FID 范围: {traj_df['FID'].min()} ~ {traj_df['FID'].max()}")
+        print(f"   - 连接后 FID 唯一值数量: {traj_df['FID'].nunique()}")
     else:
-        # 如果没有 id_right，说明 lane_gdf 可能没有 'id' 字段，直接报错退出
-        print("❌ 错误：空间连接后未找到 id_right 字段（车道段ID字段）")
+        print("❌ 错误：空间连接后未找到 FID_ 或 fid 字段")
         print(f"   可用的列名: {list(joined.columns)}")
         print(f"   lane_gdf 的列名: {list(lane_gdf.columns)}")
-        print("   请检查车道段数据是否包含 'id' 字段")
         sys.exit(1)
+    
+    # 提取 lane_id（车道ID，用于输出）
+    if 'lane_id' in joined.columns:
+        print(f"✅ 找到 lane_id 字段，添加到输出")
+        traj_df['lane_id'] = joined['lane_id'].values
+    else:
+        print("⚠️ 未找到 lane_id 字段")
     
     print(f"空间连接完成，共 {len(traj_df)} 条记录")
     

@@ -6,20 +6,24 @@ stat_lane_transitions.py
 
 输出格式：
 - CSV文件，包含 from_lane_id, to_lane_id, count 等字段
+- JSON文件，包含 lanes 信息（lane_id, nodes, stopline_node, segment_length, total_length）
 """
 
 import os
+import json
 import pandas as pd
-from collections import Counter
+from collections import Counter, defaultdict
 
 
-def main(traj_csv_path, output_csv_path):
+def main(traj_csv_path, output_csv_path, output_json_path=None, segment_length=40.0):
     """
     主函数
 
     参数:
-        traj_csv_path: str, 轨迹 CSV 路径，需包含 id, frame, FID 等字段（FID字段存储车道段id值）
+        traj_csv_path: str, 轨迹 CSV 路径，需包含 id, frame, FID, lane_id 等字段
         output_csv_path: str, 输出 CSV 文件路径
+        output_json_path: str, 输出 JSON 文件路径（可选）
+        segment_length: float, 每个节点的段长度，用于计算 total_length
     """
     print("🚀 开始统计车道段ID变动情况...")
 
@@ -28,7 +32,7 @@ def main(traj_csv_path, output_csv_path):
     traj_df = pd.read_csv(traj_csv_path)
     
     # 检查必要字段
-    required_fields = ['id', 'frame', 'FID']
+    required_fields = ['id', 'frame', 'FID', 'lane_id']
     missing_fields = [f for f in required_fields if f not in traj_df.columns]
     if missing_fields:
         raise ValueError(f"❌ 轨迹数据缺少必要字段: {missing_fields}")
@@ -115,14 +119,63 @@ def main(traj_csv_path, output_csv_path):
     print(f"🎉 统计结果已保存至: {output_csv_path}")
     print(f"📊 总计变动类型数: {len(transition_df)}")
     
+    # =================== Step 6: 生成 lanes JSON ===================
+    if output_json_path:
+        print(f"📝 正在生成 lanes JSON...")
+        
+        # 构建 lane_id -> nodes (FID列表) 的映射
+        lane_nodes_map = defaultdict(set)
+        for _, row in traj_df.iterrows():
+            lane_id = row['lane_id']
+            fid = row['FID']
+            if pd.notna(lane_id) and pd.notna(fid):
+                # 尝试转换为整数，如果失败则保持原值
+                try:
+                    lane_id_val = int(float(lane_id))
+                except (ValueError, TypeError):
+                    lane_id_val = lane_id
+                try:
+                    fid_val = int(float(fid))
+                except (ValueError, TypeError):
+                    fid_val = fid
+                lane_nodes_map[lane_id_val].add(fid_val)
+        
+        # 构建 lanes 列表
+        lanes_list = []
+        for lane_id in sorted(lane_nodes_map.keys()):
+            nodes = sorted(list(lane_nodes_map[lane_id]))
+            num_nodes = len(nodes)
+            total_length = segment_length * num_nodes
+            
+            lane_info = {
+                "lane_id": lane_id,
+                "nodes": nodes,
+                "stopline_node": None,  # 先空着，后续手动填写
+                "total_length": total_length,
+                "segment_length": segment_length
+            }
+            lanes_list.append(lane_info)
+        
+        # 输出 JSON
+        output_data = {"lanes": lanes_list}
+        
+        os.makedirs(os.path.dirname(output_json_path), exist_ok=True)
+        with open(output_json_path, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, ensure_ascii=False, indent=2)
+        
+        print(f"🎉 lanes JSON 已保存至: {output_json_path}")
+        print(f"📊 总计 {len(lanes_list)} 条车道信息")
+    
 
 
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240930.csv"         # 轨迹数据，需包含 id, frame, FID 等字段（FID字段存储车道段id值）
-    OUTPUT_CSV = r"../data/road_graph/d210240930_transitions.csv"      # 输出路径
+    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210291000.csv"         # 轨迹数据，需包含 id, frame, FID, lane_id 等字段
+    OUTPUT_CSV = r"../data/road_graph/d210291000_transitions.csv"      # 输出路径
+    OUTPUT_JSON = r"../data/road_graph/d210291000_lanes.json"          # JSON 输出路径
+    SEGMENT_LENGTH = 10.0  # 每个节点的段长度，可根据需要调整
 
     # 执行统计
-    main(TRAJ_CSV_PATH, OUTPUT_CSV)
+    main(TRAJ_CSV_PATH, OUTPUT_CSV, OUTPUT_JSON, SEGMENT_LENGTH)
 
