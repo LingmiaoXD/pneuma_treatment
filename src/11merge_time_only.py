@@ -97,8 +97,8 @@ def merge_multiple_lane_node_stats(file_paths, output_path):
     print("🔗 正在合并所有文件...")
     merged_df = pd.concat(merged_dfs, ignore_index=True)
     
-    # 按 lane_id 和 start_frame 排序
-    merged_df = merged_df.sort_values(['lane_id', 'start_frame']).reset_index(drop=True)
+    # 按 node_id 和 start_frame 排序
+    merged_df = merged_df.sort_values(['node_id', 'start_frame']).reset_index(drop=True)
     
     # 保存结果
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -132,8 +132,7 @@ def main():
     STATS_FILES = [
         r"../data/lane_node_stats/d210240830_lane_node_stats.csv",
         r"../data/lane_node_stats/d210240900_lane_node_stats.csv",
-        # 可以继续添加更多文件...
-        # r"../data/lane_node_stats/d210240930_lane_node_stats.csv",
+        r"../data/lane_node_stats/d210240930_lane_node_stats.csv",
     ]
     
     # 输出文件路径
