@@ -1,3 +1,4 @@
+#生成节点级自动轮巡的掩码，已废弃
 import pandas as pd
 import ast
 import os
