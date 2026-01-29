@@ -31,8 +31,31 @@ def series_to_colors(s, cmap='YlOrRd'):
     return s, color_map
 
 # change the path to the data that you want to visualize
-df = pd.read_csv('../data/ok_data/d210240830.csv')
-#TODO: 考虑meta数据里的车型，把车型也在图中显示
+TRAJ_CSV_PATH = '../data/ok_data/d210240830.csv'
+TRAJ_META_PATH = '../data/ok_data/meta_d210240830.csv'
+
+df = pd.read_csv(TRAJ_CSV_PATH)
+
+# Read metadata and filter out Motorcycle type
+print("正在读取轨迹元数据...")
+meta_df = pd.read_csv(TRAJ_META_PATH)
+
+# Merge trajectory data with metadata to get vehicle type
+if 'type' in meta_df.columns:
+    df = df.merge(
+        meta_df[['id', 'type']],
+        on='id',
+        how='left'
+    )
+    # Filter out Motorcycle type
+    original_count = len(df)
+    df = df[df['type'] != 'Motorcycle'].copy()
+    filtered_count = len(df)
+    print(f"过滤前: {original_count} 条记录，过滤后: {filtered_count} 条记录（已移除 Motorcycle）")
+    # Drop the type column as it's no longer needed
+    df = df.drop(columns=['type'])
+else:
+    print("警告: 元数据中未找到type字段，未进行过滤")
 
 # Starting point of the time sequence
 frame = 0
@@ -94,7 +117,7 @@ while frame < df.frame.max():
     plt.tight_layout()
     # resolution of the images can be adjusted using dpi, 
     # which will also effect the filesize.
-    plt.savefig("../plots/map_visualization_d2_10240830/"+str(int(frame*2))+".png", dpi=100)
+    plt.savefig("../plots/map_visualization_d2_10240830_nomotor/"+str(int(frame*2))+".png", dpi=100)
     plt.close()
     # Interval between the time sequence
     frame+=0.5

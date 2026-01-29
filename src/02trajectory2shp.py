@@ -7,17 +7,43 @@ from shapely.geometry import LineString
 import glob
 import os
 
-def trajectory_to_shp(csv_path, output_path):
+def trajectory_to_shp(csv_path, output_path, meta_path=None):
     """
     将轨迹CSV数据转换为shapefile线要素
     
     参数:
         csv_path: 输入CSV文件路径
         output_path: 输出shapefile路径
+        meta_path: 元数据文件路径（可选），用于过滤Motorcycle
     """
     # 读取CSV数据
     print(f"正在读取数据: {csv_path}")
     df = pd.read_csv(csv_path)
+    
+    # 读取metadata并过滤Motorcycle
+    if meta_path and os.path.exists(meta_path):
+        print(f"正在读取轨迹元数据: {meta_path}")
+        meta_df = pd.read_csv(meta_path)
+        
+        if 'type' in meta_df.columns:
+            # 合并轨迹数据和元数据
+            df = df.merge(
+                meta_df[['id', 'type']],
+                on='id',
+                how='left'
+            )
+            # 过滤掉Motorcycle类型
+            original_count = len(df)
+            df = df[df['type'] != 'Motorcycle'].copy()
+            filtered_count = len(df)
+            print(f"过滤前: {original_count} 条记录，过滤后: {filtered_count} 条记录（已移除 Motorcycle）")
+            # 删除type列
+            df = df.drop(columns=['type'])
+        else:
+            print("警告: 元数据中未找到type字段，未进行过滤")
+    else:
+        if meta_path:
+            print(f"警告: 元数据文件不存在: {meta_path}，未进行过滤")
     
     # 处理frame字段（参考visualize_on_map.py）
     df['frame'] = df['frame'].str.rstrip(';')
@@ -72,6 +98,9 @@ if __name__ == "__main__":
         basename = os.path.basename(csv_file).replace('.csv', '')
         output_file = os.path.join(output_dir, f"{basename}_trajectory.shp")
         
+        # 查找对应的meta文件
+        meta_file = os.path.join(input_dir, f"meta_{basename}.csv")
+        
         # 转换
-        trajectory_to_shp(csv_file, output_file)
+        trajectory_to_shp(csv_file, output_file, meta_path=meta_file)
         print("-" * 50)
