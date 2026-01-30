@@ -37,9 +37,54 @@ def build_direction_to_nodes_mapping(graph):
     
     return direction_to_nodes
 
+def merge_time_intervals(node_visibility):
+    """
+    将节点的可见时间段合并成连续区间
+    
+    参数:
+        node_visibility: dict {node_id: [frames]} 每个节点可见的帧列表
+    
+    返回:
+        list of dict: [{node_id, relative_start, relative_end}, ...]
+    """
+    result = []
+    
+    for node_id in sorted(node_visibility.keys()):
+        frames = sorted(node_visibility[node_id])
+        
+        if not frames:
+            continue
+        
+        # 合并连续的帧为区间
+        start = frames[0]
+        end = frames[0]
+        
+        for i in range(1, len(frames)):
+            if frames[i] == end + 1:
+                # 连续，扩展当前区间
+                end = frames[i]
+            else:
+                # 不连续，保存当前区间，开始新区间
+                result.append({
+                    'node_id': node_id,
+                    'relative_start': start,
+                    'relative_end': end
+                })
+                start = frames[i]
+                end = frames[i]
+        
+        # 保存最后一个区间
+        result.append({
+            'node_id': node_id,
+            'relative_start': start,
+            'relative_end': end
+        })
+    
+    return result
+
 def generate_node_mask(patrol_mask_path, graph_path, output_path):
     """
-    生成节点级别的mask文件
+    生成节点级别的mask文件（格式：node_id, relative_start, relative_end）
     
     参数:
         patrol_mask_path: patrol_mask_relative.csv 文件路径
@@ -71,41 +116,37 @@ def generate_node_mask(patrol_mask_path, graph_path, output_path):
     max_frame = patrol_mask['relative_end'].max()
     print(f"最大帧数: {max_frame}")
     
-    # 5. 生成mask数据
-    print("\n生成mask数据...")
-    mask_data = []
+    # 5. 根据patrol_mask直接映射生成节点可见时间段
+    print("\n生成节点可见时间段...")
+    node_visibility = {node_id: [] for node_id in all_nodes}
     
-    # 对每一帧
-    for frame in range(0, max_frame + 1):
-        # 找出当前帧哪些方向是可见的
-        visible_directions = patrol_mask[
-            (patrol_mask['relative_start'] <= frame) & 
-            (patrol_mask['relative_end'] >= frame)
-        ]['direction_id'].tolist()
+    # 遍历每个方向的时间段
+    for _, row in patrol_mask.iterrows():
+        direction_id = row['direction_id']
+        start = row['relative_start']
+        end = row['relative_end']
         
-        # 收集可见方向的所有节点
-        visible_nodes = set()
-        for direction_id in visible_directions:
-            if direction_id in direction_to_nodes:
-                visible_nodes.update(direction_to_nodes[direction_id])
-        
-        # 为每个节点生成记录
-        for node_id in all_nodes:
-            is_observed = 1 if node_id in visible_nodes else 0
-            mask_data.append({
-                'start_frame': frame,
-                'node_id': node_id,
-                'is_observed': is_observed
-            })
+        # 获取该方向包含的所有节点
+        if direction_id in direction_to_nodes:
+            nodes = direction_to_nodes[direction_id]
+            # 为这些节点添加可见帧
+            for node_id in nodes:
+                for frame in range(start, end + 1):
+                    if frame not in node_visibility[node_id]:
+                        node_visibility[node_id].append(frame)
     
-    # 6. 保存结果
+    # 6. 合并连续的时间段
+    print("合并连续时间段...")
+    mask_data = merge_time_intervals(node_visibility)
+    
+    # 7. 保存结果
     print(f"\n保存结果到 {output_path}...")
     mask_df = pd.DataFrame(mask_data)
     mask_df.to_csv(output_path, index=False)
     
     print(f"完成！生成了 {len(mask_df)} 条记录")
-    print(f"帧数范围: 0 到 {max_frame}")
     print(f"节点数量: {len(all_nodes)}")
+    print(f"时间范围: 0 到 {max_frame}")
 
 if __name__ == '__main__':
     # 设置文件路径

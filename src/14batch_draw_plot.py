@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-16batch_plot.py
+14batch_plot.py
 
 批量生成分级色彩地图，遍历 CSV 中所有 start_frame 值，
 为每个 start_frame 生成对应的 PNG 格式地图。
@@ -107,15 +107,15 @@ def create_map_for_frame(
         return False
     
     # 准备合并
-    filtered_stats['lane_id'] = filtered_stats['lane_id'].astype(str)
+    filtered_stats['node_id'] = filtered_stats['node_id'].astype(str)
     gdf_copy = gdf.copy()
     gdf_copy['fid'] = gdf_copy['fid'].astype(str)
     
     # 合并数据
     merged_gdf = gdf_copy.merge(
-        filtered_stats[['lane_id', color_field]],
+        filtered_stats[['node_id', color_field]],
         left_on='fid',
-        right_on='lane_id',
+        right_on='node_id',
         how='left'
     )
     
@@ -280,11 +280,11 @@ def main():
     # ========== 配置参数 ==========
     
     # 输入文件路径
-    buffer_shp_path = os.path.join(project_root, "plots\buffer_10\d2trajectory_10_Buffer.shp")
-    stats_csv_path = os.path.join(project_root, "data\lane_node_stats\data\lane_node_stats\d210240830_lane_node_stats.csv")
+    buffer_shp_path = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
+    stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210240830_lane_node_stats.csv")
     
     # 输出目录
-    output_dir = os.path.join(project_root, "plots\test")
+    output_dir = os.path.join(project_root, "plots/test")
     
     # 分级色彩字段 (可选: 'avg_speed', 'avg_occupancy', 'total_vehicles')
     color_field = 'avg_speed'

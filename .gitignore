@@ -6,6 +6,8 @@ data/trajectory_with_laneid/*
 data/road_graph/*
 data/lane_node_stats/*
 data/minhang/*
+data/ok_data_save/*
+data/model_output/*
 yolodata/*
 data/lane_node_stats_physSparse/*
 data/lane_node_stats_old/*

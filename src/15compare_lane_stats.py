@@ -9,8 +9,8 @@ import pandas as pd
 
 功能：
 - 对比完整的 lane_node_stats（视为“真实值”）与 12test_data.py 生成的 OUTPUT_CSV（视为“模型结果”）；
-- 只比较两个文件中都存在的行（按 lane_id + start_frame 连接）；
-- 对每个车道段（lane_id）和每个指标列计算：
+- 只比较两个文件中都存在的行（按 node_id + time 连接）；
+- 对每个车道段（node_id）和每个指标列计算：
   1）相对技能评分 Relative Skill Score (RSS)： 1 - (MAE_model / MAE_baseline)
       - baseline 取该车道该指标在时间序列上的中值；
   2）方向一致性 Directional Accuracy (DA)：
@@ -26,21 +26,21 @@ import pandas as pd
 # =================== 用户可修改参数区域 ===================
 
 # 真值的CSV 路径
-LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_test_data.csv"
+LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"
 
 # 测试数据（模型结果）CSV 路径
-OUTPUT_CSV_PATH = r"../data/lane_node_stats/d210291000_xhd_30_data.csv"
+OUTPUT_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\trafficWave-Net\output\增强训练已知点监督的L1\inference_results_L1.csv"
 
 # 可选：要参与比较的指标列列表；
-# 如果为 None，则自动从两个文件的公共数值型列中推断（排除 lane_id, start_frame）。
+# 如果为 None，则自动从两个文件的公共数值型列中推断（排除 node_id, time）。
 VALUE_COLUMNS: Optional[List[str]] = None
 
 # 可选：结果指标输出路径；如果为 None，则只在屏幕上打印，不另存文件。
-REPORT_PATH: Optional[str] = r"../data/lane_node_stats/d210291000_metrics_30.csv"
+REPORT_PATH: Optional[str] = r"E:\大学文件\研二\交通分析\代码\trafficWave-Net\output\增强训练已知点监督的L1\all_metrics.csv"
 
 # =====================================================
 
-KEY_COLUMNS = ["lane_id", "start_frame"]
+KEY_COLUMNS = ["node_id", "time"]
 
 
 def _infer_value_columns(
@@ -70,23 +70,23 @@ def _infer_value_columns(
 
 def _prepare_dataframe(path: str) -> pd.DataFrame:
     """
-    读取 CSV，并保证包含 lane_id / start_frame 两个关键列，且类型一致。
+    读取 CSV，并保证包含 node_id / time 两个关键列，且类型一致。
     """
     df = pd.read_csv(path)
     missing = [c for c in KEY_COLUMNS if c not in df.columns]
     if missing:
         raise ValueError(f"❌ 文件 {path} 缺少必要列: {missing}")
-    df["lane_id"] = df["lane_id"].astype(int)
-    df["start_frame"] = df["start_frame"].astype(float)
+    df["node_id"] = df["node_id"].astype(int)
+    df["time"] = df["time"].astype(float)
     return df
 
 
 def _compute_lane_metrics(lane_df: pd.DataFrame, value_cols: List[str]) -> List[Dict[str, float]]:
     """
-    对单个 lane_id 的数据，按指定指标列计算 RSS 和 DA 等指标。
+    对单个 node_id 的数据，按指定指标列计算 RSS 和 DA 等指标。
     """
     results: List[Dict[str, float]] = []
-    lane_df = lane_df.sort_values("start_frame")
+    lane_df = lane_df.sort_values("time")
 
     for col in value_cols:
         truth = lane_df[f"{col}_truth"].astype(float)
@@ -128,7 +128,7 @@ def _compute_lane_metrics(lane_df: pd.DataFrame, value_cols: List[str]) -> List[
 
         results.append(
             {
-                "lane_id": int(lane_df["lane_id"].iloc[0]),
+                "node_id": int(lane_df["node_id"].iloc[0]),
                 "metric": col,
                 "rss": rss,
                 "da": da,
@@ -148,8 +148,8 @@ def compare_lane_stats(
 ) -> pd.DataFrame:
     """
     主比较函数：
-    - 读取两个 CSV，按 lane_id + start_frame 做内连接（只保留两个文件都存在的行）；
-    - 对每个 lane_id、每个指标列计算 RSS 和 DA。
+    - 读取两个 CSV，按 node_id + time 做内连接（只保留两个文件都存在的行）；
+    - 对每个 node_id、每个指标列计算 RSS 和 DA。
     """
     print("📦 正在读取完整 lane_node_stats（真实值）...")
     reference_df = _prepare_dataframe(lane_node_stats_path)
@@ -162,7 +162,7 @@ def compare_lane_stats(
     value_cols = _infer_value_columns(reference_df, comparison_df, value_columns)
     print(f"📊 将参与比较的指标列: {value_cols}")
 
-    print("🔄 正在按 lane_id + start_frame 对齐两个数据集（只保留重叠行）...")
+    print("🔄 正在按 node_id + time 对齐两个数据集（只保留重叠行）...")
     merged = reference_df.merge(
         comparison_df,
         on=KEY_COLUMNS,
@@ -171,12 +171,12 @@ def compare_lane_stats(
     )
 
     if merged.empty:
-        raise ValueError("❌ 两个文件在 (lane_id, start_frame) 上没有重叠行，无法比较。")
+        raise ValueError("❌ 两个文件在 (node_id, time) 上没有重叠行，无法比较。")
 
-    print(f"✅ 重叠行数: {len(merged)}，涉及车道数: {merged['lane_id'].nunique()}")
+    print(f"✅ 重叠行数: {len(merged)}，涉及车道数: {merged['node_id'].nunique()}")
 
     metrics: List[Dict[str, float]] = []
-    for lane_id, lane_group in merged.groupby("lane_id"):
+    for node_id, lane_group in merged.groupby("node_id"):
         lane_results = _compute_lane_metrics(lane_group, value_cols)
         metrics.extend(lane_results)
 
