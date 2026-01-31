@@ -10,10 +10,10 @@ from shapefile_utils import read_shapefile_with_fallback
 
 
 if __name__ == "__main__":
-    LANE_SHP_PATH = r"../plots/buffer_10/d2trajectory_10_Buffer.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"../data/ok_data/d210240930.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
-    TRAJ_META_PATH = r"../data/ok_data/meta_d210240930.csv"        # 轨迹元数据，含 id,type等字段
-    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210240930.csv"          # 输出路径
+    LANE_SHP_PATH = r"../plots/buffer/d2trajectory_10_Buf.shp"        # 车道段面数据
+    TRAJ_CSV_PATH = r"../data/ok_data/d210291000.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
+    TRAJ_META_PATH = r"../data/ok_data/meta_d210291000.csv"        # 轨迹元数据，含 id,type等字段
+    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210291000.csv"          # 输出路径
     
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
@@ -147,6 +147,14 @@ if __name__ == "__main__":
         traj_df['car_type'] = None
     
     print(f"元数据连接完成")
+    
+    # =================== Step 5.5: 筛除Motorcycle类别 ===================
+    print("正在筛除Motorcycle类别的记录...")
+    before_filter = len(traj_df)
+    traj_df = traj_df[traj_df['car_type'] != 'motorcycle'].copy()
+    after_filter = len(traj_df)
+    print(f"筛除前: {before_filter} 条记录，筛除后: {after_filter} 条记录")
+    print(f"已移除 {before_filter - after_filter} 条Motorcycle记录")
     
     # =================== Step 6: 保存结果 ===================
     print(f"正在保存结果到 {OUTPUT_CSV}...")

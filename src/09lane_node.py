@@ -2,21 +2,27 @@
 """
 09lane_node.py
 
-按照节点ID(node_id)和时间帧统计每1秒当前节点内的交通状况（使用滑动时间窗口）
+按照节点ID(node_id)和时间帧统计每1秒当前节点内的交通状况（使用多滑块滑动时间窗口）
 
-滑动窗口说明：
+多滑块窗口说明：
 - 输出仍然对应每一秒（如第11秒、第12秒...）
-- 但实际统计的是以该秒为中心的滑动窗口内的平均值
-- 例如：滑动窗口大小为10秒时，第11秒的输出实际统计第6~16秒的数据
-- 输出从第 HALF_WINDOW 秒开始，到倒数第 HALF_WINDOW 秒结束
-  （确保每个输出点都有完整的滑动窗口数据）
+- 不同指标使用不同大小的滑动窗口，以适应各自的时间特性：
+  * 速度：1秒窗口 - 捕捉瞬时速度变化
+  * 流量：10秒窗口 - 累积足够的车辆数，平滑随机波动
+  * 占用率：4秒窗口 - 平衡敏感度和稳定性
+- 例如：第11秒的输出中
+  * 速度统计第10.5~11.5秒的数据（1秒窗口）
+  * 流量统计第6~16秒的数据（10秒窗口）
+  * 占用率统计第9~13秒的数据（4秒窗口）
+- 输出从第 MAX_HALF_WINDOW 秒开始，到倒数第 MAX_HALF_WINDOW 秒结束
+  （确保所有指标都有完整的滑动窗口数据）
 
 输入：
 - 轨迹CSV（来自05trajectory_with_laneid.py），包含 id, frame, FID(node_id), car_type, v 等字段
 - graph.json（道路图结构，包含 lanes 和 nodes）
 
 输出：
-- CSV文件，每行代表一个节点在1秒内的交通状况（基于滑动窗口平均）
+- CSV文件，每行代表一个节点在1秒内的交通状况（基于多滑块滑动窗口平均）
 """
 
 import os
@@ -33,17 +39,24 @@ SEGMENT_LENGTH = 10.0  # 默认10米
 # 车辆类型占用长度（米）
 VEHICLE_LENGTHS = {
     'car': 4.0,
-    'medium': 8.0,
-    'heavy': 14.0,
+    'medium': 6.0,
+    'heavy': 10.0,
     'motorcycle': 2.0
 }
 
-# 滑动时间窗口大小（秒）
-# 例如设为10秒，则第11秒的统计实际是第6~16秒的平均值
-SLIDING_WINDOW_SIZE = 10
+# 滑动时间窗口大小（秒）- 为不同指标设置不同的窗口
+SPEED_WINDOW = 2.0       # 速度滑块：2秒（捕捉瞬时速度变化）
+FLOW_WINDOW = 10.0       # 流量滑块：10秒（累积足够的车辆数）
+OCCUPANCY_WINDOW = 4.0   # 占用率滑块：4秒（平衡敏感度和稳定性）
 
-# 滑动窗口半径（自动计算）
-HALF_WINDOW = SLIDING_WINDOW_SIZE // 2
+# 计算最大窗口半径（用于确定输出时间范围）
+MAX_WINDOW = max(SPEED_WINDOW, FLOW_WINDOW, OCCUPANCY_WINDOW)
+MAX_HALF_WINDOW = int(MAX_WINDOW / 2)
+
+# 各指标的窗口半径
+SPEED_HALF_WINDOW = SPEED_WINDOW / 2
+FLOW_HALF_WINDOW = FLOW_WINDOW / 2
+OCCUPANCY_HALF_WINDOW = OCCUPANCY_WINDOW / 2
 
 
 def load_graph(graph_json_path):
@@ -241,10 +254,9 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     min_frame = traj_df['frame'].min()
     max_frame = traj_df['frame'].max()
     
-    # 使用滑动窗口，输出从第 HALF_WINDOW 秒开始，到倒数第 HALF_WINDOW 秒结束
-    # 确保每个输出点都有完整的滑动窗口数据
-    output_start = min_frame + HALF_WINDOW
-    output_end = max_frame - HALF_WINDOW
+    # 使用最大窗口半径来确定输出范围，确保所有指标都有完整的滑动窗口数据
+    output_start = min_frame + MAX_HALF_WINDOW
+    output_end = max_frame - MAX_HALF_WINDOW
     
     # 生成输出时间点（每1秒一个）
     output_times = []
@@ -254,7 +266,9 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
         current_time += 1
     
     print(f"✅ 原始数据范围: {min_frame:.2f} ~ {max_frame:.2f}")
-    print(f"✅ 滑动窗口大小: {SLIDING_WINDOW_SIZE} 秒")
+    print(f"✅ 速度滑动窗口: {SPEED_WINDOW} 秒")
+    print(f"✅ 流量滑动窗口: {FLOW_WINDOW} 秒")
+    print(f"✅ 占用率滑动窗口: {OCCUPANCY_WINDOW} 秒")
     print(f"✅ 输出时间范围: {output_start:.2f} ~ {output_end:.2f}")
     print(f"✅ 共生成 {len(output_times)} 个输出时间点")
     
@@ -279,46 +293,52 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
         
         # 对该节点的每个输出时间点进行统计
         for output_time in output_times:
-            # 计算滑动窗口的实际范围
-            # 例如：output_time=11, HALF_WINDOW=5 -> 窗口范围 [6, 16)
-            window_start = output_time - HALF_WINDOW
-            window_end = output_time + HALF_WINDOW
-            
-            # 筛选该滑动窗口内的数据
-            window_data = node_group[
-                (node_group['frame'] >= window_start) & 
-                (node_group['frame'] < window_end)
-            ].copy()
-            
-            # 如果没有车辆经过，写入默认值
-            if window_data.empty:
-                results.append({
-                    'node_id': node_id,
-                    'start_frame': output_time,  # 输出时间点（滑动窗口中心）
-                    'avg_speed': None,
-                    'avg_occupancy': 0,
-                    'total_vehicles': 0,
-                })
-                continue
-            
-            # 统计基本信息
-            unique_vehicles = window_data['id'].nunique()
+            # ========== 1. 计算速度（使用1秒窗口）==========
+            speed_window_start = output_time - SPEED_HALF_WINDOW
+            speed_window_end = output_time + SPEED_HALF_WINDOW
+            speed_window_data = node_group[
+                (node_group['frame'] >= speed_window_start) & 
+                (node_group['frame'] < speed_window_end)
+            ]
             
             # 计算平均速度（绝对值，单位：km/h）
-            avg_speed = window_data['v'].abs().mean()
-            # 如果平均速度为NaN，则设为None（空值）
-            if pd.isna(avg_speed):
+            if speed_window_data.empty:
                 avg_speed = None
             else:
-                avg_speed = round(avg_speed, 2)
+                avg_speed = speed_window_data['v'].abs().mean()
+                if pd.isna(avg_speed):
+                    avg_speed = None
+                else:
+                    avg_speed = round(avg_speed, 2)
+            
+            # ========== 2. 计算流量（使用10秒窗口）==========
+            flow_window_start = output_time - FLOW_HALF_WINDOW
+            flow_window_end = output_time + FLOW_HALF_WINDOW
+            flow_window_data = node_group[
+                (node_group['frame'] >= flow_window_start) & 
+                (node_group['frame'] < flow_window_end)
+            ]
+            
+            # 统计唯一车辆数
+            unique_vehicles = flow_window_data['id'].nunique() if not flow_window_data.empty else 0
+            
+            # ========== 3. 计算占用率（使用4秒窗口）==========
+            occupancy_window_start = output_time - OCCUPANCY_HALF_WINDOW
+            occupancy_window_end = output_time + OCCUPANCY_HALF_WINDOW
+            occupancy_window_data = node_group[
+                (node_group['frame'] >= occupancy_window_start) & 
+                (node_group['frame'] < occupancy_window_end)
+            ]
             
             # 计算平均占用率（需要统计每一帧的占用率，然后求平均）
-            frame_occupancies = []
-            for frame, frame_group in window_data.groupby('frame'):
-                occupancy = calculate_occupancy_rate(frame_group, segment_length)
-                frame_occupancies.append(occupancy)
-            
-            avg_occupancy = np.mean(frame_occupancies) if frame_occupancies else 0.0
+            if occupancy_window_data.empty:
+                avg_occupancy = 0.0
+            else:
+                frame_occupancies = []
+                for frame, frame_group in occupancy_window_data.groupby('frame'):
+                    occupancy = calculate_occupancy_rate(frame_group, segment_length)
+                    frame_occupancies.append(occupancy)
+                avg_occupancy = np.mean(frame_occupancies) if frame_occupancies else 0.0
             
             # 保存结果
             results.append({
@@ -358,9 +378,9 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210240930.csv"  # 轨迹数据
+    TRAJ_CSV_PATH = r"../data/trajectory_with_laneid/d210291000.csv"  # 轨迹数据
     GRAPH_JSON_PATH = r"../data/road_graph/graph_10m.json"  # 图结构（更新版本，包含lanes和nodes）
-    OUTPUT_CSV = r"../data/lane_node_stats/d210240930_lane_node_stats.csv"  # 输出路径
+    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"  # 输出路径
     
     if not os.path.exists(GRAPH_JSON_PATH):
         raise FileNotFoundError(f"❌ 图文件不存在: {GRAPH_JSON_PATH}")

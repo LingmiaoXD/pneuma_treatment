@@ -136,7 +136,7 @@ def main():
     ]
     
     # 输出文件路径
-    OUTPUT_FILE = r"../data/lane_node_stats/merged_lane_node_stats.csv"
+    OUTPUT_FILE = r"../data/lane_node_stats/d21024_merged_lane_node_stats.csv"
     
     # =================== 执行合并 ===================
     merge_multiple_lane_node_stats(STATS_FILES, OUTPUT_FILE)

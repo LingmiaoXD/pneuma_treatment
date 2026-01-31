@@ -80,7 +80,7 @@ def trajectory_to_shp(csv_path, output_path, meta_path=None):
 
 if __name__ == "__main__":
     # 输入数据路径
-    input_dir = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\data\ok_data"
+    input_dir = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\data\ok_data_d6"
     output_dir = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\data\derived\trajectory2"
     
     # 创建输出目录

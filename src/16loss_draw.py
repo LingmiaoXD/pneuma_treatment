@@ -16,6 +16,7 @@
 import os
 import pandas as pd
 import geopandas as gpd
+from shapefile_utils import read_shapefile_with_fallback
 
 
 def main():
@@ -28,12 +29,12 @@ def main():
     csv_file = os.path.join(project_root, "data/model_output/all_metrics.csv")
     
     # 输出目录
-    output_dir = os.path.join(project_root, "plots/inference/loss_map")
+    output_dir = os.path.join(project_root, "plots/inference/loss_map2")
     os.makedirs(output_dir, exist_ok=True)
     
     # 读取基础 shapefile
     print("📦 正在读取基础 Shapefile...")
-    gdf_base = gpd.read_file(base_shp)
+    gdf_base = read_shapefile_with_fallback(base_shp, verbose=True)
     print(f"✅ 共加载 {len(gdf_base)} 个要素")
     print(f"📋 Shapefile 列名: {list(gdf_base.columns)}")
     
@@ -70,9 +71,10 @@ def main():
         data_columns = [col for col in df_metric.columns if col not in ['node_id', 'metric']]
         print(f"📋 要添加的数据列: {data_columns}")
         
-        # 为每个数据列在 GeoDataFrame 中初始化
+        # 为每个数据列在 GeoDataFrame 中初始化为浮点数类型
         for col in data_columns:
-            gdf_metric[col] = None
+            # 初始化为 NaN（浮点数类型），而不是 None
+            gdf_metric[col] = float('nan')
         
         # 遍历 CSV 中的每一行，根据 node_id 匹配 FID_
         matched_count = 0
@@ -92,12 +94,11 @@ def main():
                     if pd.notna(value) and isinstance(value, (int, float)):
                         # 先转为浮点数并四舍五入到4位小数
                         rounded_value = round(float(value), 4)
-                        # 如果是整数，保持整数类型
-                        if rounded_value == int(rounded_value):
-                            value = int(rounded_value)
-                        else:
-                            value = rounded_value
-                    gdf_metric.loc[mask, col] = value
+                        # 保持为浮点数类型，即使是整数值
+                        gdf_metric.loc[mask, col] = float(rounded_value)
+                    else:
+                        # 如果不是数值，保持为 NaN
+                        gdf_metric.loc[mask, col] = float('nan')
                 matched_count += 1
             else:
                 unmatched_nodes.append(node_id)
@@ -105,6 +106,17 @@ def main():
         print(f"✅ 成功匹配 {matched_count}/{len(df_metric)} 个节点")
         if unmatched_nodes:
             print(f"⚠️ 未匹配的 node_id: {unmatched_nodes[:10]}{'...' if len(unmatched_nodes) > 10 else ''}")
+        
+        # 确保所有数据列都是浮点数类型
+        print(f"\n🔧 正在转换数据类型...")
+        for col in data_columns:
+            gdf_metric[col] = pd.to_numeric(gdf_metric[col], errors='coerce')
+        print(f"✅ 数据类型转换完成")
+        
+        # 打印数据类型信息
+        print(f"\n📊 字段数据类型:")
+        for col in data_columns:
+            print(f"   {col}: {gdf_metric[col].dtype}")
         
         # 保存为新的 shapefile
         output_path = os.path.join(output_dir, f"{metric}.shp")
