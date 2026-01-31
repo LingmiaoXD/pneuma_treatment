@@ -34,8 +34,8 @@ def check_node_visibility(node_id, time, node_mask):
     
     return False
 
-def plot_speed_with_visibility(df, interpolated_df, output_path, start_frame=5, end_frame=824, dpi=300):
-    """绘制速度随时间变化的图表，区分可见和不可见部分，并添加插值数据"""
+def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, start_frame=5, end_frame=824, dpi=300):
+    """绘制速度随时间变化的图表，区分可见和不可见部分，并添加插值数据和额外数据"""
     
     # 设置图表样式 - 支持中文显示
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
@@ -48,12 +48,20 @@ def plot_speed_with_visibility(df, interpolated_df, output_path, start_frame=5, 
     df = df.sort_values('time')
     interpolated_df = interpolated_df[(interpolated_df['time'] >= start_frame) & (interpolated_df['time'] <= end_frame)].copy()
     interpolated_df = interpolated_df.sort_values('time')
+    additional_df = additional_df[(additional_df['time'] >= start_frame) & (additional_df['time'] <= end_frame)].copy()
+    additional_df = additional_df.sort_values('time')
     
     # 首先绘制插值数据（灰色虚线，在最下层）
     if len(interpolated_df) > 0:
         ax.plot(interpolated_df['time'].values, interpolated_df['avg_speed'].values, 
                 color='gray', linestyle='--', linewidth=1.5, alpha=0.6, 
                 label='Interpolated', zorder=1)
+    
+    # 绘制额外数据（绿色实线）
+    if len(additional_df) > 0:
+        ax.plot(additional_df['time'].values, additional_df['avg_speed'].values, 
+                color='green', linestyle='-', linewidth=1.5, alpha=0.7, 
+                label='Additional Data', zorder=1.5)
     
     times = df['time'].values
     speeds = df['avg_speed'].values
@@ -77,7 +85,7 @@ def plot_speed_with_visibility(df, interpolated_df, output_path, start_frame=5, 
     for segment in segments:
         if segment['observed']:
             # 可见部分：蓝色点
-            ax.scatter(segment['times'], segment['speeds'], c='blue', s=30, marker='o',
+            ax.scatter(segment['times'], segment['speeds'], c='blue', s=5, marker='o',
                       label='Observed' if 'Observed' not in ax.get_legend_handles_labels()[1] else '',
                       zorder=3)
         else:
@@ -105,6 +113,8 @@ def main():
     lane_stats_path = '../data/draw/d210191000/d210291000_lane_node_stats.csv'
     node_mask_path = '../data/draw/d210191000/d210291000_node_mask.csv'
     interpolated_data_path = '../data/draw/d210191000/interpolated_data.csv'
+    additional_data_path = '../data/draw/d210191000/inference_results.csv'
+    
     output_path = '../data/draw/d210191000/node1_speed_visibility.png'
 
     start_frame = 5
@@ -115,10 +125,12 @@ def main():
     lane_stats = pd.read_csv(lane_stats_path)
     node_mask = pd.read_csv(node_mask_path)
     interpolated_data = pd.read_csv(interpolated_data_path)
+    additional_data = pd.read_csv(additional_data_path)
     
     print(f"车道统计数据: {len(lane_stats)} 条记录")
     print(f"节点可见窗口: {len(node_mask)} 条记录")
     print(f"插值数据: {len(interpolated_data)} 条记录")
+    print(f"额外数据: {len(additional_data)} 条记录")
     
     # 2. 筛选node_id=1的数据
     print("\n筛选node_id=1的数据...")
@@ -128,12 +140,15 @@ def main():
         (interpolated_data['node_id'] == 1) & 
         (interpolated_data['direction_id'] == 'W1')
     ].copy()
+    # 筛选额外数据中node_id=1的数据
+    node1_additional = additional_data[additional_data['node_id'] == 1].copy()
     
     # 将 interpolated_avg_speed 转换为 avg_speed（乘以100）
     node1_interpolated['avg_speed'] = node1_interpolated['interpolated_avg_speed'] * 100
     
     print(f"真值数据找到 {len(node1_data)} 条记录")
     print(f"插值数据找到 {len(node1_interpolated)} 条记录")
+    print(f"额外数据找到 {len(node1_additional)} 条记录")
     
     # 检查插值数据的时间连续性
     if len(node1_interpolated) > 0:
@@ -170,7 +185,7 @@ def main():
     
     # 4. 绘制图表
     print("\n绘制图表...")
-    plot_speed_with_visibility(node1_data, node1_interpolated, output_path, start_frame, end_frame)
+    plot_speed_with_visibility(node1_data, node1_interpolated, node1_additional, output_path, start_frame, end_frame)
     
     print("\n完成!")
 

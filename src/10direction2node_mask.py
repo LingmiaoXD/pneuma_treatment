@@ -129,9 +129,9 @@ def generate_node_mask(patrol_mask_path, graph_path, output_path):
         # 获取该方向包含的所有节点
         if direction_id in direction_to_nodes:
             nodes = direction_to_nodes[direction_id]
-            # 为这些节点添加可见帧
+            # 为这些节点添加可见帧（左闭右开区间 [start, end)）
             for node_id in nodes:
-                for frame in range(start, end + 1):
+                for frame in range(start, end):
                     if frame not in node_visibility[node_id]:
                         node_visibility[node_id].append(frame)
     
