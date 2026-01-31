@@ -45,7 +45,7 @@ def merge_time_intervals(node_visibility):
         node_visibility: dict {node_id: [frames]} 每个节点可见的帧列表
     
     返回:
-        list of dict: [{node_id, relative_start, relative_end}, ...]
+        list of dict: [{node_id, start, end}, ...]
     """
     result = []
     
@@ -67,8 +67,8 @@ def merge_time_intervals(node_visibility):
                 # 不连续，保存当前区间，开始新区间
                 result.append({
                     'node_id': node_id,
-                    'relative_start': start,
-                    'relative_end': end
+                    'start': start,
+                    'end': end
                 })
                 start = frames[i]
                 end = frames[i]
@@ -76,15 +76,15 @@ def merge_time_intervals(node_visibility):
         # 保存最后一个区间
         result.append({
             'node_id': node_id,
-            'relative_start': start,
-            'relative_end': end
+            'start': start,
+            'end': end
         })
     
     return result
 
 def generate_node_mask(patrol_mask_path, graph_path, output_path):
     """
-    生成节点级别的mask文件（格式：node_id, relative_start, relative_end）
+    生成节点级别的mask文件（格式：node_id, start, end）
     
     参数:
         patrol_mask_path: patrol_mask_relative.csv 文件路径
@@ -113,7 +113,7 @@ def generate_node_mask(patrol_mask_path, graph_path, output_path):
     print(f"\n总共 {len(all_nodes)} 个节点")
     
     # 4. 确定时间范围
-    max_frame = patrol_mask['relative_end'].max()
+    max_frame = patrol_mask['end'].max()
     print(f"最大帧数: {max_frame}")
     
     # 5. 根据patrol_mask直接映射生成节点可见时间段
@@ -123,8 +123,8 @@ def generate_node_mask(patrol_mask_path, graph_path, output_path):
     # 遍历每个方向的时间段
     for _, row in patrol_mask.iterrows():
         direction_id = row['direction_id']
-        start = row['relative_start']
-        end = row['relative_end']
+        start = row['start']
+        end = row['end']
         
         # 获取该方向包含的所有节点
         if direction_id in direction_to_nodes:

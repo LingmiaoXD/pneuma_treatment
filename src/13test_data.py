@@ -7,7 +7,7 @@
 
 输入：
 - lane_node_stats CSV（来自09lane_node.py），包含完整的车道段统计数据
-- node_mask CSV（格式：node_id,relative_start,relative_end），每一行表示当前node_id可见的连续区间
+- node_mask CSV（格式：node_id,start,end），每一行表示当前node_id可见的连续区间
 
 输出：
 - 测试数据CSV，格式与lane_node_stats完全一样，根据配置参数只包含盲点或可见点区域的节点
@@ -25,7 +25,7 @@ def generate_test_data(lane_node_stats_path, NODE_MASK_PATH, output_path, keep_o
     
     参数:
         lane_node_stats_path: str, lane_node_stats CSV文件路径
-        NODE_MASK_PATH: str, node_mask CSV文件路径（格式：node_id,relative_start,relative_end）
+        NODE_MASK_PATH: str, node_mask CSV文件路径（格式：node_id,start,end）
         output_path: str, 输出CSV文件路径
         keep_observed: int, 保留类型：0表示保留盲点区域，1表示保留可见点区域
         remove_filtered: bool, 是否删除被过滤的行：
@@ -52,7 +52,7 @@ def generate_test_data(lane_node_stats_path, NODE_MASK_PATH, output_path, keep_o
     mask_df = pd.read_csv(NODE_MASK_PATH)
     
     # 检查必要字段
-    required_mask_fields = ['node_id', 'relative_start', 'relative_end']
+    required_mask_fields = ['node_id', 'start', 'end']
     missing_mask_fields = [f for f in required_mask_fields if f not in mask_df.columns]
     if missing_mask_fields:
         raise ValueError(f"❌ node_mask缺少必要字段: {missing_mask_fields}")
@@ -65,8 +65,8 @@ def generate_test_data(lane_node_stats_path, NODE_MASK_PATH, output_path, keep_o
     stats_df['start_frame'] = stats_df['start_frame'].astype(int)
     
     mask_df['node_id'] = mask_df['node_id'].astype(str)
-    mask_df['relative_start'] = mask_df['relative_start'].astype(int)
-    mask_df['relative_end'] = mask_df['relative_end'].astype(int)
+    mask_df['start'] = mask_df['start'].astype(int)
+    mask_df['end'] = mask_df['end'].astype(int)
     
     # =================== Step 3: 根据可见区间判断每条记录是否可见 ===================
     if keep_observed == 0:
@@ -74,25 +74,24 @@ def generate_test_data(lane_node_stats_path, NODE_MASK_PATH, output_path, keep_o
     else:
         print("🔄 正在过滤可见点区域的节点...")
     
-    # 为每个node_id计算其时间窗口的相对索引
+    # 按照node_id和start_frame排序
     stats_df = stats_df.sort_values(['node_id', 'start_frame']).reset_index(drop=True)
-    stats_df['relative_index'] = stats_df.groupby('node_id').cumcount()
     
-    # 为每条记录判断是否在可见区间内
+    # 为每条记录判断是否在可见区间内（使用绝对start_frame值）
     def is_in_visible_range(row):
         node_id = row['node_id']
-        relative_idx = row['relative_index']
+        start_frame = row['start_frame']
         
         # 获取该node_id的所有可见区间
         node_masks = mask_df[mask_df['node_id'] == node_id]
         
-        # 判断relative_idx是否在任何一个可见区间内
+        # 判断start_frame是否在任何一个可见区间内（使用绝对值对齐）
         for _, mask_row in node_masks.iterrows():
-            if mask_row['relative_start'] <= relative_idx <= mask_row['relative_end']:
+            if mask_row['start'] <= start_frame <= mask_row['end']:
                 return 1  # 可见
         return 0  # 不可见
     
-    print("🔍 正在判断每条记录的可见性...")
+    print("🔍 正在判断每条记录的可见性（使用绝对start_frame值对齐）...")
     stats_df['is_observed'] = stats_df.apply(is_in_visible_range, axis=1)
     
     # 获取需要保留数据的行和需要过滤的行
@@ -102,20 +101,20 @@ def generate_test_data(lane_node_stats_path, NODE_MASK_PATH, output_path, keep_o
         # 直接删除被过滤的行
         filtered_df = stats_df[keep_mask].copy()
         # 删除辅助列
-        filtered_df = filtered_df.drop(columns=['relative_index', 'is_observed'])
+        filtered_df = filtered_df.drop(columns=['is_observed'])
     else:
         # 保留所有行，但被过滤的行属性字段设为空值
         filtered_df = stats_df.copy()
         
         # 获取需要清空的属性列（除了node_id和start_frame之外的所有列）
-        key_columns = ['node_id', 'start_frame', 'relative_index', 'is_observed']
+        key_columns = ['node_id', 'start_frame', 'is_observed']
         attr_columns = [col for col in filtered_df.columns if col not in key_columns]
         
         # 将被过滤行的属性字段设为空值
         filtered_df.loc[~keep_mask, attr_columns] = None
         
         # 删除辅助列
-        filtered_df = filtered_df.drop(columns=['relative_index', 'is_observed'])
+        filtered_df = filtered_df.drop(columns=['is_observed'])
     
     # 按照原始顺序排序
     filtered_df = filtered_df.sort_values(['node_id', 'start_frame']).reset_index(drop=True)
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     REMOVE_FILTERED = False  # 开发者可在此处修改：True或False
     
     LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"  # 完整的lane_node_stats
-    NODE_MASK_PATH = r"../data/lane_node_stats/d210291000_node_mask.csv"  # node_mask（格式：node_id,relative_start,relative_end）
+    NODE_MASK_PATH = r"../data/lane_node_stats/d210291000_node_mask.csv"  # node_mask（格式：node_id,start,end）
     OUTPUT_CSV = r"../data/lane_node_stats/d210291000_test_data.csv"  # 输出路径（根据KEEP_OBSERVED决定保留盲点或可见点数据）
     
     # 检查文件是否存在
