@@ -181,21 +181,13 @@ def classify_trajectory_type(current_node_id, next_node_id, node_dict):
     return None
 
 
-def calculate_occupancy_rate(group, segment_length, current_node_id, node_dict, traj_df, current_frame):
+def calculate_occupancy_rate(group, segment_length):
     """
-    计算占用率（考虑车辆长度对下一节点的影响）
-    
-    车辆占用分配策略：
-    - 当前节点（车辆中心点所在节点）：占用车辆长度的 3/4
-    - 下一个节点（direct连接的节点）：占用车辆长度的 1/4
+    计算占用率
     
     参数:
-        group: DataFrame, 某一帧内当前节点的所有车辆记录
+        group: DataFrame, 某一帧内的所有车辆记录
         segment_length: float, 节点段长度（米）
-        current_node_id: int, 当前节点ID
-        node_dict: dict, 节点字典
-        traj_df: DataFrame, 完整轨迹数据
-        current_frame: float, 当前时间帧
         
     返回:
         float: 占用率（0-1之间）
@@ -203,50 +195,12 @@ def calculate_occupancy_rate(group, segment_length, current_node_id, node_dict, 
     if group.empty:
         return 0.0
     
-    # 计算当前节点的占用长度
+    # 计算所有车辆的占用长度之和
     total_length = 0.0
-    
     for _, row in group.iterrows():
         car_type = row.get('car_type')
         vehicle_length = get_vehicle_length(car_type)
-        
-        # 当前节点占用3/4的车辆长度
-        total_length += vehicle_length * 0.75
-        
-        # 尝试找到下一个节点，判断是否需要将1/4分配给下一节点
-        vehicle_id = row['id']
-        next_node_id = get_next_node_for_vehicle(traj_df, vehicle_id, current_node_id, current_frame)
-        
-        # 如果找到了下一个节点，并且它在direct连接中，则将1/4分配给下一节点
-        # （这部分占用会在计算下一节点时被加上）
-        if next_node_id is not None and current_node_id in node_dict:
-            node_info = node_dict[current_node_id]
-            if next_node_id in node_info['direct']:
-                # 这里只是记录，实际的1/4占用会在下一节点计算时加上
-                pass
-    
-    # 查找所有在当前帧中，下一个节点是当前节点的车辆（即前一节点的车辆）
-    # 这些车辆会贡献1/4的长度给当前节点
-    frame_data = traj_df[traj_df['frame'] == current_frame]
-    for _, row in frame_data.iterrows():
-        vehicle_id = row['id']
-        vehicle_node_id = int(float(row['FID'])) if pd.notna(row['FID']) else None
-        
-        # 跳过当前节点的车辆（已经在上面计算过了）
-        if vehicle_node_id == current_node_id:
-            continue
-        
-        # 检查这辆车的下一个节点是否是当前节点
-        next_node_id = get_next_node_for_vehicle(traj_df, vehicle_id, vehicle_node_id, current_frame)
-        
-        if next_node_id == current_node_id and vehicle_node_id in node_dict:
-            # 检查是否是direct连接
-            prev_node_info = node_dict[vehicle_node_id]
-            if current_node_id in prev_node_info['direct']:
-                # 这辆车在前一个节点，但会占用当前节点1/4的长度
-                car_type = row.get('car_type')
-                vehicle_length = get_vehicle_length(car_type)
-                total_length += vehicle_length * 0.25
+        total_length += vehicle_length
     
     # 占用率 = 总占用长度 / 节点段长度
     occupancy_rate = min(total_length / segment_length, 1.0)  # 限制在0-1之间
@@ -382,10 +336,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
             else:
                 frame_occupancies = []
                 for frame, frame_group in occupancy_window_data.groupby('frame'):
-                    occupancy = calculate_occupancy_rate(
-                        frame_group, segment_length, node_id, node_dict, 
-                        traj_df, frame
-                    )
+                    occupancy = calculate_occupancy_rate(frame_group, segment_length)
                     frame_occupancies.append(occupancy)
                 avg_occupancy = np.mean(frame_occupancies) if frame_occupancies else 0.0
             

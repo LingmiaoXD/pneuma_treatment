@@ -9,7 +9,7 @@
     思路：
         先从d210291000_lane_node_stats.csv中筛选出node_id等于1的行，下面所有处理和显示的图表都局限于node_id等于1
         然后增加一列is_observed，对每一行基于node_id和time，对是否在可见轮巡窗口进行判断，是则为1，不是则为0
-        接着绘制随着时间avg_occupancy变化的折线，对于is_observed为1的部分用实线连接，为0的用虚线连接
+        接着绘制随着时间total_vehicles变化的折线，对于is_observed为1的部分用实线连接，为0的用虚线连接
 
     输出：
         一张300pi图表png
@@ -63,8 +63,8 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     if show_interpolated and len(interpolated_df) > 0:
         print(f"绘制插值数据: {len(interpolated_df)} 个点")
         print(f"插值数据时间范围: {interpolated_df['time'].min()} - {interpolated_df['time'].max()}")
-        print(f"插值流量范围: {interpolated_df['avg_occupancy'].min():.2f} - {interpolated_df['avg_occupancy'].max():.2f}")
-        ax.plot(interpolated_df['time'].values, interpolated_df['avg_occupancy'].values, 
+        print(f"插值流量范围: {interpolated_df['total_vehicles'].min():.2f} - {interpolated_df['total_vehicles'].max():.2f}")
+        ax.plot(interpolated_df['time'].values, interpolated_df['total_vehicles'].values, 
                 color='gray', linestyle='--', linewidth=1.5, alpha=0.6, 
                 label='线性插值结果', zorder=1)
     elif not show_interpolated:
@@ -74,14 +74,14 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     
     # 绘制额外数据（绿色实线）
     if show_additional and len(additional_df) > 0:
-        ax.plot(additional_df['time'].values, additional_df['avg_occupancy'].values, 
+        ax.plot(additional_df['time'].values, additional_df['total_vehicles'].values, 
                 color='green', linestyle='-', linewidth=1.5, alpha=0.7, 
                 label='模型补全结果', zorder=1.5)
     elif not show_additional:
         print("额外数据显示已关闭")
     
     times = df['time'].values
-    speeds = df['avg_occupancy'].values
+    speeds = df['total_vehicles'].values
     is_observed = df['is_observed'].values
     
     # 找出所有可见和不可见的连续段
@@ -128,7 +128,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 42
+    NODE_ID = 43
     
     # 显示选项（True=显示，False=隐藏）
     SHOW_INTERPOLATED = True    # 插值数据（灰色虚线）
@@ -171,16 +171,16 @@ def main():
     print(f"插值数据找到 {len(node1_interpolated)} 条记录")
     print(f"额外数据找到 {len(node1_additional)} 条记录")
     
-    # 将 interpolated_avg_occupancy 转换为 avg_occupancy（乘以100）
+    # 将 interpolated_total_vehicles 转换为 total_vehicles
     if len(node1_interpolated) > 0:
         print(f"\n插值数据列名: {node1_interpolated.columns.tolist()}")
-        if 'interpolated_avg_occupancy' in node1_interpolated.columns:
-            node1_interpolated['avg_occupancy'] = node1_interpolated['interpolated_avg_occupancy']
-            print(f"插值数据 avg_occupancy 范围: {node1_interpolated['avg_occupancy'].min():.2f} - {node1_interpolated['avg_occupancy'].max():.2f}")
-        elif 'avg_occupancy' not in node1_interpolated.columns:
-            print("警告：插值数据中既没有 'interpolated_avg_occupancy' 也没有 'avg_occupancy' 列！")
+        if 'interpolated_total_vehicles' in node1_interpolated.columns:
+            node1_interpolated['total_vehicles'] = node1_interpolated['interpolated_total_vehicles']
+            print(f"插值数据 total_vehicles 范围: {node1_interpolated['total_vehicles'].min():.2f} - {node1_interpolated['total_vehicles'].max():.2f}")
+        elif 'total_vehicles' not in node1_interpolated.columns:
+            print("警告：插值数据中既没有 'interpolated_total_vehicles' 也没有 'total_vehicles' 列！")
         else:
-            print("插值数据已包含 'avg_occupancy' 列，无需转换")
+            print("插值数据已包含 'total_vehicles' 列，无需转换")
     else:
         print("警告：没有找到符合条件的插值数据！")
     
