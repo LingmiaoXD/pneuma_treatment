@@ -99,17 +99,32 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     segments.append(current_segment)
     
     # 绘制每个段（在插值数据之上）
-    for segment in segments:
+    for i, segment in enumerate(segments):
         if segment['observed'] and show_observed:
-            # 可见部分：蓝色点
+            # 可见部分：蓝色点和蓝色实线
+            ax.plot(segment['times'], segment['speeds'], 'b-', linewidth=1,
+                   label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
+                   zorder=3)
             ax.scatter(segment['times'], segment['speeds'], c='blue', s=5, marker='o',
-                      label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
-                      zorder=3)
+                      zorder=4)
         elif not segment['observed'] and show_unobserved:
             # 不可见部分：红色虚线
             ax.plot(segment['times'], segment['speeds'], 'r--', linewidth=1, 
                    label='不可见段' if '不可见段' not in ax.get_legend_handles_labels()[1] else '',
                    zorder=2)
+        
+        # 连接当前段和下一段之间的间隔（用红色虚线）
+        if i < len(segments) - 1:
+            current_end_time = segment['times'][-1]
+            current_end_speed = segment['speeds'][-1]
+            next_start_time = segments[i+1]['times'][0]
+            next_start_speed = segments[i+1]['speeds'][0]
+            
+            # 如果时间不连续，用红色虚线连接
+            if next_start_time > current_end_time:
+                ax.plot([current_end_time, next_start_time], 
+                       [current_end_speed, next_start_speed], 
+                       'r--', linewidth=1, zorder=2)
     
     # 设置图表属性
     ax.set_xlabel('相对时间(s)', fontsize=12)
@@ -128,11 +143,11 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 43
+    NODE_ID = 49
     
     # 显示选项（True=显示，False=隐藏）
-    SHOW_INTERPOLATED = True    # 插值数据（灰色虚线）
-    SHOW_ADDITIONAL = True       # 额外数据（绿色实线）
+    SHOW_INTERPOLATED = False    # 插值数据（灰色虚线）
+    SHOW_ADDITIONAL = False       # 额外数据（绿色实线）
     SHOW_OBSERVED = True         # 可见部分（蓝色点）
     SHOW_UNOBSERVED = True       # 不可见部分（红色虚线）
     

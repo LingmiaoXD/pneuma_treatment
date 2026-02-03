@@ -29,14 +29,14 @@ import pandas as pd
 LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"
 
 # 测试数据（模型结果）CSV 路径
-OUTPUT_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\trafficWave-Net\output\0131绝对时间\inference_results.csv"
+OUTPUT_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\trafficWave-Net\output\0202l2\inference_results.csv"
 
 # 可选：要参与比较的指标列列表；
 # 如果为 None，则自动从两个文件的公共数值型列中推断（排除 node_id, time）。
 VALUE_COLUMNS: Optional[List[str]] = None
 
 # 可选：结果指标输出路径；如果为 None，则只在屏幕上打印，不另存文件。
-REPORT_PATH: Optional[str] = r"E:\大学文件\研二\交通分析\代码\trafficWave-Net\output\0131绝对时间\all_metrics.csv"
+REPORT_PATH: Optional[str] = r"E:\大学文件\研二\交通分析\代码\trafficWave-Net\output\0202l2\all_metrics.csv"
 
 # =====================================================
 
@@ -102,7 +102,22 @@ def _compute_lane_metrics(lane_df: pd.DataFrame, value_cols: List[str]) -> List[
         baseline_value = truth.median()
         mae_baseline = (truth - baseline_value).abs().mean()
 
-        # 相对技能评分 RSS
+        # RMSE_model
+        rmse_model = np.sqrt(((model - truth) ** 2).mean())
+        # RMSE_baseline
+        rmse_baseline = np.sqrt(((truth - baseline_value) ** 2).mean())
+
+        # MAPE_model (Mean Absolute Percentage Error)
+        # 只在真值非零时计算，避免除零
+        mask_nonzero = truth != 0
+        if mask_nonzero.sum() > 0:
+            mape_model = ((model[mask_nonzero] - truth[mask_nonzero]).abs() / truth[mask_nonzero].abs()).mean() * 100
+            mape_baseline = ((truth[mask_nonzero] - baseline_value).abs() / truth[mask_nonzero].abs()).mean() * 100
+        else:
+            mape_model = np.nan
+            mape_baseline = np.nan
+
+        # 相对技能评分 RSS (基于 MAE)
         if np.isclose(mae_baseline, 0.0):
             # 基线误差几乎为 0：如果模型误差也几乎为 0，则认为 RSS = 1，否则无法定义（NaN）
             rss = 1.0 if np.isclose(mae_model, 0.0) else np.nan
@@ -134,6 +149,10 @@ def _compute_lane_metrics(lane_df: pd.DataFrame, value_cols: List[str]) -> List[
                 "da": da,
                 "mae_model": mae_model,
                 "mae_baseline": mae_baseline,
+                "rmse_model": rmse_model,
+                "rmse_baseline": rmse_baseline,
+                "mape_model": mape_model,
+                "mape_baseline": mape_baseline,
                 "n_points": len(truth),
                 "n_deltas": max(len(truth) - 1, 0),
             }
@@ -183,13 +202,15 @@ def compare_lane_stats(
     result_df = pd.DataFrame(metrics)
     
     # 确保数值列为正确的数据类型，避免 CSV 中数值前出现单引号
-    numeric_cols = ["rss", "da", "mae_model", "mae_baseline", "n_points", "n_deltas"]
+    numeric_cols = ["rss", "da", "mae_model", "mae_baseline", "rmse_model", "rmse_baseline", 
+                    "mape_model", "mape_baseline", "n_points", "n_deltas"]
     for col in numeric_cols:
         if col in result_df.columns:
             result_df[col] = pd.to_numeric(result_df[col], errors="coerce")
     
     # 对浮点数值列保留4位小数（整数列保持不变）
-    float_cols = ["rss", "da", "mae_model", "mae_baseline"]
+    float_cols = ["rss", "da", "mae_model", "mae_baseline", "rmse_model", "rmse_baseline", 
+                  "mape_model", "mape_baseline"]
     for col in float_cols:
         if col in result_df.columns:
             result_df[col] = result_df[col].round(4)

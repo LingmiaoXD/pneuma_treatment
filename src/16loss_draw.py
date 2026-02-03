@@ -29,7 +29,7 @@ def main():
     csv_file = os.path.join(project_root, "data/model_output/all_metrics.csv")
     
     # 输出目录
-    output_dir = os.path.join(project_root, "plots/inference/loss_map3")
+    output_dir = os.path.join(project_root, "plots/inference/loss_mapl2")
     os.makedirs(output_dir, exist_ok=True)
     
     # 读取基础 shapefile

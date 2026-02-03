@@ -63,7 +63,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     if show_interpolated and len(interpolated_df) > 0:
         print(f"绘制插值数据: {len(interpolated_df)} 个点")
         print(f"插值数据时间范围: {interpolated_df['time'].min()} - {interpolated_df['time'].max()}")
-        print(f"插值数据速度范围: {interpolated_df['avg_speed'].min():.2f} - {interpolated_df['avg_speed'].max():.2f}")
+        print(f"插值速度范围: {interpolated_df['avg_speed'].min():.2f} - {interpolated_df['avg_speed'].max():.2f}")
         ax.plot(interpolated_df['time'].values, interpolated_df['avg_speed'].values, 
                 color='gray', linestyle='--', linewidth=1.5, alpha=0.6, 
                 label='线性插值结果', zorder=1)
@@ -99,21 +99,36 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     segments.append(current_segment)
     
     # 绘制每个段（在插值数据之上）
-    for segment in segments:
+    for i, segment in enumerate(segments):
         if segment['observed'] and show_observed:
-            # 可见部分：蓝色点
+            # 可见部分：蓝色点和蓝色实线
+            ax.plot(segment['times'], segment['speeds'], 'b-', linewidth=1,
+                   label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
+                   zorder=3)
             ax.scatter(segment['times'], segment['speeds'], c='blue', s=5, marker='o',
-                      label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
-                      zorder=3)
+                      zorder=4)
         elif not segment['observed'] and show_unobserved:
             # 不可见部分：红色虚线
             ax.plot(segment['times'], segment['speeds'], 'r--', linewidth=1, 
                    label='不可见段' if '不可见段' not in ax.get_legend_handles_labels()[1] else '',
                    zorder=2)
+        
+        # 连接当前段和下一段之间的间隔（用红色虚线）
+        if i < len(segments) - 1:
+            current_end_time = segment['times'][-1]
+            current_end_speed = segment['speeds'][-1]
+            next_start_time = segments[i+1]['times'][0]
+            next_start_speed = segments[i+1]['speeds'][0]
+            
+            # 如果时间不连续，用红色虚线连接
+            if next_start_time > current_end_time:
+                ax.plot([current_end_time, next_start_time], 
+                       [current_end_speed, next_start_speed], 
+                       'r--', linewidth=1, zorder=2)
     
     # 设置图表属性
     ax.set_xlabel('相对时间(s)', fontsize=12)
-    ax.set_ylabel('平均速度 (km/h)', fontsize=12)
+    ax.set_ylabel('实时速度', fontsize=12)
     ax.set_title(f'可见状态下的速度特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=14, fontweight='bold')
     ax.set_xlim(start_frame, end_frame)
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
@@ -128,11 +143,11 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 42
+    NODE_ID = 108
     
     # 显示选项（True=显示，False=隐藏）
     SHOW_INTERPOLATED = False    # 插值数据（灰色虚线）
-    SHOW_ADDITIONAL = True       # 额外数据（绿色实线）
+    SHOW_ADDITIONAL = False       # 额外数据（绿色实线）
     SHOW_OBSERVED = True         # 可见部分（蓝色点）
     SHOW_UNOBSERVED = True       # 不可见部分（红色虚线）
     
@@ -171,11 +186,11 @@ def main():
     print(f"插值数据找到 {len(node1_interpolated)} 条记录")
     print(f"额外数据找到 {len(node1_additional)} 条记录")
     
-    # 将 interpolated_avg_speed 转换为 avg_speed（乘以100）
+    # 将 interpolated_avg_speed 转换为 avg_speed
     if len(node1_interpolated) > 0:
         print(f"\n插值数据列名: {node1_interpolated.columns.tolist()}")
         if 'interpolated_avg_speed' in node1_interpolated.columns:
-            node1_interpolated['avg_speed'] = node1_interpolated['interpolated_avg_speed'] * 100
+            node1_interpolated['avg_speed'] = node1_interpolated['interpolated_avg_speed']*100
             print(f"插值数据 avg_speed 范围: {node1_interpolated['avg_speed'].min():.2f} - {node1_interpolated['avg_speed'].max():.2f}")
         elif 'avg_speed' not in node1_interpolated.columns:
             print("警告：插值数据中既没有 'interpolated_avg_speed' 也没有 'avg_speed' 列！")

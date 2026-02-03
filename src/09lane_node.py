@@ -47,7 +47,7 @@ VEHICLE_LENGTHS = {
 # 滑动时间窗口大小（秒）- 为不同指标设置不同的窗口
 SPEED_WINDOW = 2.0       # 速度滑块：2秒（捕捉瞬时速度变化）
 FLOW_WINDOW = 10.0       # 流量滑块：10秒（累积足够的车辆数）
-OCCUPANCY_WINDOW = 4.0   # 占用率滑块：4秒（平衡敏感度和稳定性）
+OCCUPANCY_WINDOW = 2.0   # 占用率滑块：2秒（平衡敏感度和稳定性）
 
 # 计算最大窗口半径（用于确定输出时间范围）
 MAX_WINDOW = max(SPEED_WINDOW, FLOW_WINDOW, OCCUPANCY_WINDOW)
