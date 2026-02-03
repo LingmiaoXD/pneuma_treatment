@@ -51,12 +51,13 @@ STATE_NAMES = {
     TrafficState.UNKNOWN: '无数据'
 }
 
-def calculate_trend(speeds, window=10):
+def calculate_trend(speeds, window=10, slope_threshold=1.5):
     """计算速度趋势
     
     参数:
         speeds: 速度序列（未来window个时间点）
         window: 趋势计算窗口大小
+        slope_threshold: 斜率阈值，用于判断明显上升或下降（默认1.5）
     
     返回:
         'increasing': 明显上升
@@ -86,25 +87,27 @@ def calculate_trend(speeds, window=10):
     std = np.std(y_valid)
     
     # 判断趋势
-    if abs(slope) < 0.5:  # 斜率很小，认为稳定
+    if abs(slope) < 0.3:  # 斜率很小，认为稳定
         if std > 3:  # 但波动大
             return 'unstable'
         return 'stable'
-    elif slope > 1.5:  # 明显上升
+    elif slope > slope_threshold:  # 明显上升
         return 'increasing'
-    elif slope < -1.5:  # 明显下降
+    elif slope < -slope_threshold:  # 明显下降
         return 'decreasing'
     else:
         if std > 3:
             return 'unstable'
         return 'stable'
 
-def classify_traffic_state(speed, future_speeds, lower_threshold=5, upper_threshold=25):
+def classify_traffic_state(speed, future_speeds, slope_threshold=1.5, 
+                          lower_threshold=5, upper_threshold=25):
     """分类交通状态
     
     参数:
         speed: 当前速度
-        future_speeds: 未来10s的速度序列
+        future_speeds: 未来的速度序列
+        slope_threshold: 斜率阈值，用于判断明显上升或下降（默认1.5）
         lower_threshold: 下限阈值，默认为5
         upper_threshold: 上限阈值，默认为25
     
@@ -124,7 +127,7 @@ def classify_traffic_state(speed, future_speeds, lower_threshold=5, upper_thresh
         return TrafficState.QUEUED
     
     # 速度在lower_threshold-upper_threshold之间，需要判断趋势
-    trend = calculate_trend(future_speeds)
+    trend = calculate_trend(future_speeds, slope_threshold=slope_threshold)
     
     if trend == 'decreasing':
         return TrafficState.QUEUE_FORMING
@@ -133,7 +136,7 @@ def classify_traffic_state(speed, future_speeds, lower_threshold=5, upper_thresh
     else:  # unstable or stable
         return TrafficState.SATURATED
 
-def estimate_states(df, node_id, value_column='avg_speed', window=10, 
+def estimate_states(df, node_id, value_column='avg_speed', window=10, slope_threshold=1.5,
                    lower_threshold=5, upper_threshold=25):
     """估计时间序列的交通状态
     
@@ -141,9 +144,10 @@ def estimate_states(df, node_id, value_column='avg_speed', window=10,
         df: DataFrame，包含time和速度列
         node_id: 节点ID
         value_column: 速度列名
-        window: 趋势计算窗口大小
-        lower_threshold: 下限阈值，默认为5
-        upper_threshold: 上限阈值，默认为25
+        window: 趋势计算窗口大小（真值和本研究模型用10s，其他模型用5s）
+        slope_threshold: 斜率阈值，用于判断明显上升或下降（真值和本研究模型用1.5，其他模型用1.3）
+        lower_threshold: 速度下限阈值，默认为5
+        upper_threshold: 速度上限阈值，默认为25
     
     返回:
         DataFrame，包含time和state列
@@ -176,7 +180,9 @@ def estimate_states(df, node_id, value_column='avg_speed', window=10,
         
         # 分类状态
         state = classify_traffic_state(current_speed, future_speeds, 
-                                      lower_threshold, upper_threshold)
+                                      slope_threshold=slope_threshold,
+                                      lower_threshold=lower_threshold, 
+                                      upper_threshold=upper_threshold)
         states.append(state)
     
     result = pd.DataFrame({
@@ -210,8 +216,8 @@ def plot_state_timeline(state_configs, node_id, output_path, start_frame=5, end_
     fig, ax = plt.subplots(figsize=figsize)
     
     # 每个配置占据的高度
-    bar_height = 0.4  # 从0.8调整为0.4，缩小到一半
-    bar_spacing = 0.2
+    bar_height = 0.6  # 增加条带高度到0.6
+    bar_spacing = 0.1  # 减小间距，让条带更紧凑
     
     # 绘制每个配置的状态条
     for idx, config in enumerate(state_configs):
@@ -294,43 +300,55 @@ def main():
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',
             'label': '真值',
             'value_column': 'avg_speed',
-            'lower_threshold': 5,   # 真值使用5-25
-            'upper_threshold': 25
+            'window': 10,  # 真值使用10s窗口
+            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 25  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/inference_results.csv',
             'label': '本研究模型',
             'value_column': 'avg_speed',
-            'lower_threshold': 5,   # 本研究模型使用5-25
-            'upper_threshold': 25
+            'window': 10,  # 本研究模型使用10s窗口
+            'slope_threshold': 1.5,  # 本研究模型使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 25  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/simple_stgnn_predictions.csv',
             'label': 'STGNN',
             'value_column': 'avg_speed',
-            'lower_threshold': 5,   # 其他模型使用5-20
-            'upper_threshold': 25  # 其他模型使用20
+            'window': 10,  # 其他模型使用5s窗口
+            'slope_threshold': 1.1,  # 其他模型使用1.3斜率阈值
+            'lower_threshold': 3,  # 速度下限阈值
+            'upper_threshold': 8  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/physical_prior_predictions.csv',
             'label': '物理模型法',
             'value_column': 'avg_speed',
-            'lower_threshold': 5,   # 其他模型使用5-20
-            'upper_threshold': 25  # 其他模型使用20
+            'window': 5,  # 其他模型使用5s窗口
+            'slope_threshold': 1.3,  # 其他模型使用1.3斜率阈值
+            'lower_threshold': 7,  # 速度下限阈值
+            'upper_threshold': 12  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/phase_template_results.csv',
             'label': '模板法',
             'value_column': 'avg_speed',
-            'lower_threshold': 5,   # 其他模型使用5-20
-            'upper_threshold': 25  # 其他模型使用20
+            'window': 5,  # 其他模型使用5s窗口
+            'slope_threshold': 1.3,  # 其他模型使用1.3斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 20  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/st_idw_results.csv',
             'label': 'ST-IDW',
             'value_column': 'avg_speed',
-            'lower_threshold': 5,   # 其他模型使用5-20
-            'upper_threshold': 23  # 其他模型使用20
+            'window': 5,  # 其他模型使用5s窗口
+            'slope_threshold': 1.3,  # 其他模型使用1.3斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 25  # 速度上限阈值
         }
     ]
     
@@ -342,18 +360,20 @@ def main():
         file_path = config['file_path']
         label = config['label']
         value_column = config.get('value_column', 'avg_speed')
-        lower_threshold = config.get('lower_threshold', 5)   # 默认使用5
-        upper_threshold = config.get('upper_threshold', 25)  # 默认使用25
+        window = config.get('window', 10)  # 默认使用10s窗口
+        slope_threshold = config.get('slope_threshold', 1.5)  # 默认使用1.5斜率阈值
+        lower_threshold = config.get('lower_threshold', 5)  # 默认使用5作为下限
+        upper_threshold = config.get('upper_threshold', 25)  # 默认使用25作为上限
         
         try:
             # 读取数据
             df = pd.read_csv(file_path)
-            print(f"\n加载 {label}: {len(df)} 条记录 (阈值: {lower_threshold}-{upper_threshold})")
+            print(f"\n加载 {label}: {len(df)} 条记录 (窗口: {window}s, 斜率阈值: {slope_threshold}, 速度阈值: {lower_threshold}-{upper_threshold})")
             
             # 估计状态
             states_df = estimate_states(df, NODE_ID, value_column=value_column, 
-                                       lower_threshold=lower_threshold,
-                                       upper_threshold=upper_threshold)
+                                       window=window, slope_threshold=slope_threshold,
+                                       lower_threshold=lower_threshold, upper_threshold=upper_threshold)
             
             if len(states_df) == 0:
                 print(f"  警告：未找到node_id={NODE_ID}的数据，跳过")
@@ -389,7 +409,7 @@ def main():
         start_frame=start_frame,
         end_frame=end_frame,
         dpi=300,
-        figsize=(14, len(state_configs) * 1.5 + 2)
+        figsize=(14, len(state_configs) * 0.8 + 2)  # 减小每条时间线占用的高度
     )
     
     print("\n完成!")

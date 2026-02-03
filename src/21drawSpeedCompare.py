@@ -118,6 +118,15 @@ def main():
     '''
     curve_configs = [
         {
+            'file_path': '../data/draw/d210191000/st_idw_results.csv',
+            'label': 'ST-IDW',
+            'color': 'y',
+            'linestyle': '--',
+            'linewidth': 1,
+            'alpha': 0.5,
+            'value_column': 'avg_speed'
+        },
+        {
             'file_path': '../data/draw/d210191000/phase_template_results.csv',
             'label': '模板法',
             'color': 'blue',
@@ -127,8 +136,17 @@ def main():
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/st_idw_results.csv',
-            'label': 'ST-IDW',
+            'file_path': '../data/draw/d210191000/physical_prior_predictions.csv',
+            'label': '物理模型',
+            'color': 'purple',
+            'linestyle': '--',
+            'linewidth': 1,
+            'alpha': 0.5,
+            'value_column': 'avg_speed'
+        },
+        {
+            'file_path': '../data/draw/d210191000/simple_stgnn_predictions.csv',
+            'label': 'STGNN',
             'color': 'green',
             'linestyle': '--',
             'linewidth': 1,
