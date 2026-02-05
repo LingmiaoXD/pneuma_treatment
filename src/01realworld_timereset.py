@@ -7,6 +7,7 @@
         确认一下输出的表是否都改好，列表名是否对
         把更新后的表丢给yolo模型的time_reset.py处理，生成看向范围的时段和对齐后的数据
         然后05trajectory_with_nodeid_realworld.py处理
+        然后09lane_node_realworld.py处理
         
 
 '''

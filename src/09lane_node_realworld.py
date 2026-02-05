@@ -40,7 +40,7 @@ SEGMENT_LENGTH = 10.0  # 默认10米
 
 # 滑动时间窗口大小（秒）- 为不同指标设置不同的窗口
 SPEED_WINDOW = 2.0       # 速度滑块：2秒（捕捉瞬时速度变化）
-FLOW_WINDOW = 10.0       # 流量滑块：10秒（累积足够的车辆数）
+FLOW_WINDOW = 2.0       # 流量滑块：2秒（累积足够的车辆数）
 OCCUPANCY_WINDOW = 2.0   # 占用率滑块：2秒（平衡敏感度和稳定性）
 
 # 计算最大窗口半径（用于确定输出时间范围）
@@ -126,14 +126,10 @@ def get_next_node_for_vehicle(traj_df, vehicle_id, current_node_id, current_fram
         return None
     
     # 找到第一个与当前节点不同的节点
-    current_node_str = str(current_node_id)
     for _, row in future_traj.iterrows():
-        next_node_str = str(row['FID'])
-        if next_node_str != current_node_str and pd.notna(row['FID']):
-            try:
-                return int(float(next_node_str))
-            except (ValueError, TypeError):
-                return None
+        next_node_id = row['FID']
+        if pd.notna(next_node_id) and int(next_node_id) != current_node_id:
+            return int(next_node_id)
     
     return None
 
@@ -223,7 +219,7 @@ def calculate_occupancy_rate(group, segment_length, current_node_id, node_dict, 
     frame_data = traj_df[traj_df['frame'] == current_frame]
     for _, row in frame_data.iterrows():
         vehicle_id = row['id']
-        vehicle_node_id = int(float(row['FID'])) if pd.notna(row['FID']) else None
+        vehicle_node_id = int(row['FID']) if pd.notna(row['FID']) else None
         
         # 跳过当前节点的车辆（已经在上面计算过了）
         if vehicle_node_id == current_node_id:
@@ -270,27 +266,29 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     
     print(f"✅ 共读取 {len(traj_df)} 条轨迹记录")
     
-    # 将start_time重命名为frame，保持后续代码兼容
-    traj_df['frame'] = traj_df['start_time']
-    
     # 数据类型转换：处理可能是文本格式的数字字段
-    numeric_fields = ['id', 'frame', 'corrected_x', 'corrected_y', 'width', 'height', 'speed_kmh', 'FID', 'lane_id']
+    print("🔄 正在转换数据类型...")
+    numeric_fields = ['id', 'start_time', 'corrected_x', 'corrected_y', 'width', 'height', 'speed_kmh', 'FID', 'lane_id']
     for field in numeric_fields:
         if field in traj_df.columns:
-            # 先转为字符串，去除可能的分号和空格
-            traj_df[field] = traj_df[field].astype(str).str.strip().str.rstrip(';')
+            # 先转为字符串，去除可能的分号、空格、引号等
+            traj_df[field] = traj_df[field].astype(str).str.strip().str.rstrip(';').str.strip('"').str.strip("'")
+            # 替换空字符串为NaN
+            traj_df[field] = traj_df[field].replace('', np.nan)
+            traj_df[field] = traj_df[field].replace('nan', np.nan)
             # 转换为数值类型，无法转换的设为NaN
             traj_df[field] = pd.to_numeric(traj_df[field], errors='coerce')
+    
+    print(f"✅ 数据类型转换完成")
+    
+    # 将start_time重命名为frame，保持后续代码兼容
+    traj_df['frame'] = traj_df['start_time']
     
     # 过滤掉没有节点ID的记录
     original_count = len(traj_df)
     traj_df = traj_df[traj_df['FID'].notna()].copy()
-    traj_df = traj_df[traj_df['FID'].astype(str).str.strip() != ''].copy()
     filtered_count = len(traj_df)
     print(f"📊 过滤后保留 {filtered_count} 条有效记录（过滤前: {original_count}）")
-    
-    # 确保FID为字符串类型
-    traj_df['FID'] = traj_df['FID'].astype(str).str.strip()
     
     # 加载图结构
     node_dict = load_graph(graph_json_path)
@@ -326,8 +324,8 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     # 获取所有节点ID
     all_node_ids = set(node_dict.keys())
     
-    # 将FID转换为整数，方便匹配
-    traj_df['FID_int'] = traj_df['FID'].apply(lambda x: int(float(x)) if x else -1)
+    # 将FID转换为整数，方便匹配（FID已经是数值类型）
+    traj_df['FID_int'] = traj_df['FID'].apply(lambda x: int(x) if pd.notna(x) else -1)
     
     # 对每个节点和每个输出时间点进行统计
     for node_id in all_node_ids:
@@ -413,7 +411,7 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     
     # total_vehicles: 按对数变换 + 归一化
     results_df['total_vehicles'] = results_df['total_vehicles'].apply(
-        lambda x: round(np.log(1 + x) / np.log(15) , 2)
+        lambda x: round(np.log(1 + x) / np.log(8) , 2)
     )
     
     results_df.to_csv(output_csv_path, index=False, encoding='utf-8')
@@ -427,9 +425,9 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRAJ_CSV_PATH = r"../yolodata/trajectory_with_laneid/0127085212_0001.csv"  # 轨迹数据
-    GRAPH_JSON_PATH = r"../data/road_graph/minhang_graph.json"  # 图结构（更新版本，包含lanes和nodes）
-    OUTPUT_CSV = r"../yolodata/lane_node_stats/0127085212_0001_test.csv"  # 输出路径
+    TRAJ_CSV_PATH = r"/home/nvme1/pneuma/data/trajectory_with_laneid/0127085203_0001.csv"  # 轨迹数据
+    GRAPH_JSON_PATH = r"/home/nvme1/pneuma/data/road_graph/minhang_graph.json"  # 图结构（更新版本，包含lanes和nodes）
+    OUTPUT_CSV = r"/home/nvme1/pneuma/data/lane_node_stats/k0127085203_0001_lane_node_state.csv"  # 输出路径
     
     if not os.path.exists(GRAPH_JSON_PATH):
         raise FileNotFoundError(f"❌ 图文件不存在: {GRAPH_JSON_PATH}")
