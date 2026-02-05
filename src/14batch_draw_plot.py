@@ -101,7 +101,7 @@ def create_map_for_frame(
         bool: 是否成功生成
     """
     # 筛选指定 start_frame 的数据
-    filtered_stats = stats_df[stats_df['start_frame'] == start_frame].copy()
+    filtered_stats = stats_df[stats_df['time'] == start_frame].copy()
     
     if len(filtered_stats) == 0:
         return False
@@ -214,7 +214,7 @@ def batch_generate_maps(
         return 0
     
     # 3. 获取所有可用的 start_frame 值
-    all_frames = sorted(stats_df['start_frame'].unique())
+    all_frames = sorted(stats_df['time'].unique())
     
     if verbose:
         print(f"   总 frame 数: {len(all_frames)}")
@@ -281,7 +281,7 @@ def main():
     
     # 输入文件路径
     buffer_shp_path = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
-    stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210240830_lane_node_stats.csv")
+    stats_csv_path = os.path.join(project_root, "data/lane_node_stats/d210291000_lane_node_stats.csv")
     
     # 输出目录
     output_dir = os.path.join(project_root, "plots/test")

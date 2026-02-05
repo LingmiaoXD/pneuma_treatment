@@ -19,7 +19,7 @@ from shapefile_utils import read_shapefile_with_fallback
 
 def main():
     # ========== 配置参数 ==========
-    TARGET_TIME = 444  # 要筛选的时间值
+    TARGET_TIME = 142  # 要筛选的时间值
     # ==============================
     
     # 获取项目根目录
@@ -28,7 +28,7 @@ def main():
     
     # 输入文件路径
     base_shp = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
-    csv_file = os.path.join(project_root, "data/draw/d210191000/d210291000_lane_node_stats.csv")
+    csv_file = os.path.join(project_root, "data/draw/d210191000/st_idw_results.csv")
     
     # 输出目录
     output_dir = os.path.join(project_root, "plots/inference/time_allnode")
