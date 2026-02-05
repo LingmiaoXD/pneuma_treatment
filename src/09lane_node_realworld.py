@@ -299,10 +299,11 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     max_frame = traj_df['frame'].max()
     
     # 使用最大窗口半径来确定输出范围，确保所有指标都有完整的滑动窗口数据
-    output_start = min_frame + MAX_HALF_WINDOW
-    output_end = max_frame - MAX_HALF_WINDOW
+    # 向上取整到整数秒，确保输出时间点是整数
+    output_start = int(np.ceil(min_frame + MAX_HALF_WINDOW))
+    output_end = int(np.floor(max_frame - MAX_HALF_WINDOW))
     
-    # 生成输出时间点（每1秒一个）
+    # 生成输出时间点（每1秒一个，都是整数）
     output_times = []
     current_time = output_start
     while current_time <= output_end:
