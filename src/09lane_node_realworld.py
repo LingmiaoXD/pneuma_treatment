@@ -18,7 +18,7 @@
   （确保所有指标都有完整的滑动窗口数据）
 
 输入：
-- 轨迹CSV，包含 frame, id, corrected_x, corrected_y, width, speed_kmh, FID(node_id), car_type 等字段
+- 轨迹CSV，包含 id, corrected_x, corrected_y, width, height, speed_kmh, start_time, FID, lane_id, car_type 等字段
 - graph.json（道路图结构，包含 lanes 和 nodes）
 
 输出：
@@ -262,18 +262,25 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
     print("📦 正在读取轨迹数据...")
     traj_df = pd.read_csv(traj_csv_path)
     
-    # 检查必要字段
-    required_fields = ['id', 'frame', 'FID', 'speed_kmh', 'width']
+    # 检查必要字段（新的列名）
+    required_fields = ['id', 'start_time', 'FID', 'speed_kmh', 'width']
     missing_fields = [f for f in required_fields if f not in traj_df.columns]
     if missing_fields:
         raise ValueError(f"❌ 轨迹数据缺少必要字段: {missing_fields}")
     
     print(f"✅ 共读取 {len(traj_df)} 条轨迹记录")
     
-    # 处理frame字段
-    if 'frame' in traj_df.columns:
-        traj_df['frame'] = traj_df['frame'].astype(str).str.rstrip(';')
-        traj_df['frame'] = traj_df['frame'].astype(float)
+    # 将start_time重命名为frame，保持后续代码兼容
+    traj_df['frame'] = traj_df['start_time']
+    
+    # 数据类型转换：处理可能是文本格式的数字字段
+    numeric_fields = ['id', 'frame', 'corrected_x', 'corrected_y', 'width', 'height', 'speed_kmh', 'FID', 'lane_id']
+    for field in numeric_fields:
+        if field in traj_df.columns:
+            # 先转为字符串，去除可能的分号和空格
+            traj_df[field] = traj_df[field].astype(str).str.strip().str.rstrip(';')
+            # 转换为数值类型，无法转换的设为NaN
+            traj_df[field] = pd.to_numeric(traj_df[field], errors='coerce')
     
     # 过滤掉没有节点ID的记录
     original_count = len(traj_df)
