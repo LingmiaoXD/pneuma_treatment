@@ -10,10 +10,9 @@ from shapefile_utils import read_shapefile_with_fallback
 
 
 if __name__ == "__main__":
-    LANE_SHP_PATH = r"../plots/buffer/d2trajectory_10_Buf.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"../data/ok_data/d210291000.csv"         # 轨迹数据，含 id,frame,lon,lat 等字段
-    TRAJ_META_PATH = r"../data/ok_data/meta_d210291000.csv"        # 轨迹元数据，含 id,type等字段
-    OUTPUT_CSV = r"../data/trajectory_with_laneid/d210291000.csv"          # 输出路径
+    LANE_SHP_PATH = r"../plots/buffer/minhang.shp"        # 车道段面数据
+    TRAJ_CSV_PATH = r"../yolodata/ok_data/0127085203_0001.csv"         # 轨迹数据，含 track_id,frame_number,corrected_x,corrected_y,width,height,class_name,speed_kmh 等字段
+    OUTPUT_CSV = r"../yolodata/trajectory_with_laneid/0127085203_0001.csv"          # 输出路径
     
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)
@@ -32,25 +31,31 @@ if __name__ == "__main__":
     traj_df = pd.read_csv(TRAJ_CSV_PATH)
     
     # 处理frame字段（如果有分号）
-    if 'frame' in traj_df.columns:
-        traj_df['frame'] = traj_df['frame'].astype(str).str.rstrip(';')
-        traj_df['frame'] = traj_df['frame'].astype(float)
+    if 'frame_number' in traj_df.columns:
+        traj_df['frame_number'] = traj_df['frame_number'].astype(str).str.rstrip(';')
+        traj_df['frame_number'] = traj_df['frame_number'].astype(float)
+    
+    # 重命名字段以保持与原输出格式一致
+    # track_id -> id, frame_number -> frame
+    if 'track_id' in traj_df.columns:
+        traj_df.rename(columns={'track_id': 'id'}, inplace=True)
+    if 'frame_number' in traj_df.columns:
+        traj_df.rename(columns={'frame_number': 'frame'}, inplace=True)
     
     print(f"共读取 {len(traj_df)} 条轨迹记录")
     print(f"📋 traj_df 的所有列名: {list(traj_df.columns)}")
     
     # =================== Step 3: 创建轨迹点的GeoDataFrame ===================
     print("正在创建轨迹点几何...")
-    geometry = [Point(xy) for xy in zip(traj_df.lon, traj_df.lat)]
+    # 使用 corrected_x, corrected_y（投影坐标）创建几何
+    geometry = [Point(xy) for xy in zip(traj_df.corrected_x, traj_df.corrected_y)]
     traj_gdf = gpd.GeoDataFrame(
         traj_df,
         geometry=geometry,
-        crs="EPSG:4326"
+        crs=lane_gdf.crs  # 使用与车道数据相同的坐标系
     )
     
-    # 确保两个GeoDataFrame使用相同的坐标系
-    if lane_gdf.crs != traj_gdf.crs:
-        traj_gdf = traj_gdf.to_crs(lane_gdf.crs)
+    # 坐标系已经在创建时设置为一致，无需转换
     
     # =================== Step 4: 空间连接获取车道段ID ===================
     print("正在进行空间连接...")
@@ -76,30 +81,22 @@ if __name__ == "__main__":
     # 打印空间连接后的所有列名，用于调试
     print(f"📋 空间连接后 joined 的所有列名: {list(joined.columns)}")
     
-    # 调试：打印 lane_gdf 中 FID_ 和 fid 的值范围
+    # 调试：打印 lane_gdf 中 node_id 和 lane_id 的值范围
     print(f"📊 lane_gdf 字段值范围调试:")
-    if 'FID_' in lane_gdf.columns:
-        print(f"   - FID_ 范围: {lane_gdf['FID_'].min()} ~ {lane_gdf['FID_'].max()}")
-    if 'fid' in lane_gdf.columns:
-        print(f"   - fid 范围: {lane_gdf['fid'].min()} ~ {lane_gdf['fid'].max()}")
+    if 'node_id' in lane_gdf.columns:
+        print(f"   - node_id 范围: {lane_gdf['node_id'].min()} ~ {lane_gdf['node_id'].max()}")
     if 'lane_id' in lane_gdf.columns:
         print(f"   - lane_id 范围: {lane_gdf['lane_id'].min()} ~ {lane_gdf['lane_id'].max()}")
     
-    # 提取车道段ID（使用 FID_ 或 fid 作为连接标识）
-    fid_field = None
-    for field in ['FID_', 'fid']:
-        if field in joined.columns:
-            fid_field = field
-            break
-    
-    if fid_field:
-        print(f"✅ 使用 '{fid_field}' 字段作为车道段FID")
+    # 提取节点ID（使用 node_id 作为连接标识）
+    if 'node_id' in joined.columns:
+        print(f"✅ 使用 'node_id' 字段作为节点ID")
         # 使用 .values 确保索引对齐
-        traj_df['FID'] = joined[fid_field].values
+        traj_df['FID'] = joined['node_id'].values
         print(f"   - 连接后 FID 范围: {traj_df['FID'].min()} ~ {traj_df['FID'].max()}")
         print(f"   - 连接后 FID 唯一值数量: {traj_df['FID'].nunique()}")
     else:
-        print("❌ 错误：空间连接后未找到 FID_ 或 fid 字段")
+        print("❌ 错误：空间连接后未找到 node_id 字段")
         print(f"   可用的列名: {list(joined.columns)}")
         print(f"   lane_gdf 的列名: {list(lane_gdf.columns)}")
         sys.exit(1)
@@ -120,31 +117,33 @@ if __name__ == "__main__":
     filtered_count = len(traj_df)
     print(f"过滤前: {original_count} 条记录，过滤后: {filtered_count} 条记录")
     
-    # =================== Step 5: 连接元数据获取car_type ===================
-    print("正在读取轨迹元数据...")
-    meta_df = pd.read_csv(TRAJ_META_PATH)
-    
-    # 通过id字段连接获取type字段
-    if 'type' in meta_df.columns:
-        traj_df = traj_df.merge(
-            meta_df[['id', 'type']],
-            on='id',
-            how='left'
-        )
-        # 类型映射：Car/Taxi -> car, Bus/Medium Vehicle -> medium, Heavy Vehicle -> heavy, Motorcycle -> motorcycle
+    # =================== Step 5: 处理车辆类型 ===================
+    print("正在处理车辆类型...")
+    # class_name 字段已经在轨迹数据中，直接映射为 car_type
+    if 'class_name' in traj_df.columns:
+        # 类型映射：car -> car, bus -> medium, truck -> heavy, motorcycle -> motorcycle
         type_mapping = {
-            'Car': 'car',
-            'Bus': 'medium',
-            'Van': 'medium',
-            'Truck': 'heavy'
+            'car': 'car',
+            'bus': 'medium',
+            'truck': 'heavy',
+            'motorcycle': 'motorcycle',
+            'van': 'medium'
         }
-        traj_df['car_type'] = traj_df['type'].map(type_mapping)
-        traj_df = traj_df.drop(columns=['type'])
+        # 转换为小写后映射
+        traj_df['car_type'] = traj_df['class_name'].str.lower().map(type_mapping)
+        
+        # 过滤掉没有映射的记录
+        before_filter = len(traj_df)
+        traj_df = traj_df[traj_df['car_type'].notna()].copy()
+        after_filter = len(traj_df)
+        print(f"   - 过滤前: {before_filter} 条记录")
+        print(f"   - 过滤后: {after_filter} 条记录")
+        print(f"   - 删除了 {before_filter - after_filter} 条未映射的记录")
     else:
-        print("警告: 元数据中未找到type字段")
+        print("警告: 轨迹数据中未找到class_name字段")
         traj_df['car_type'] = None
     
-    print(f"元数据连接完成")
+    print(f"车辆类型处理完成")
     
     
     # =================== Step 6: 保存结果 ===================
