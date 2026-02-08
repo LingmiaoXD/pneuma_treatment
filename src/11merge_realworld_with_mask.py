@@ -151,9 +151,9 @@ def main(mask_csv_path, dynamic_csv_path, output_csv_path):
 if __name__ == "__main__":
     
     # 示例路径（请根据实际情况修改）
-    MASK_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\lane_node_stats\k0127085212_0001_node_mask.csv"  # mask文件
-    DYNAMIC_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\lane_node_stats\k0127085212_0001_test_2.csv"  # dynamic文件
-    OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\lane_node_stats\k0127085212_0001_test.csv"  # 输出路径
+    MASK_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\minhang_lane_node_stats\k0129094705_0001_node_mask.csv"  # mask文件
+    DYNAMIC_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\minhang_lane_node_stats\k0129094705_0001_lane_node_stats_3.csv"  # dynamic文件
+    OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\minhang_lane_node_stats\k0129094705_0001_lane_node_stats.csv"  # 输出路径
     
     # 检查文件是否存在
     if not os.path.exists(MASK_CSV_PATH):

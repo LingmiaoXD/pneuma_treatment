@@ -426,9 +426,9 @@ def main(traj_csv_path, graph_json_path, output_csv_path):
 # =================== 示例调用 ===================
 if __name__ == "__main__":
     
-    TRAJ_CSV_PATH = r"/home/nvme1/pneuma/data/trajectory_with_laneid/0127085212_0001.csv"  # 轨迹数据
+    TRAJ_CSV_PATH = r"/home/nvme1/pneuma/data/trajectory_with_laneid/0129094705_0001.csv"  # 轨迹数据
     GRAPH_JSON_PATH = r"/home/nvme1/pneuma/data/road_graph/minhang_graph.json"  # 图结构（更新版本，包含lanes和nodes）
-    OUTPUT_CSV = r"/home/nvme1/pneuma/data/lane_node_stats/k0127085212_0001_test_2.csv"  # 输出路径
+    OUTPUT_CSV = r"/home/nvme1/pneuma/data/lane_node_stats/k0129094705_0001_lane_node_stats_3.csv"  # 输出路径
     
     if not os.path.exists(GRAPH_JSON_PATH):
         raise FileNotFoundError(f"❌ 图文件不存在: {GRAPH_JSON_PATH}")

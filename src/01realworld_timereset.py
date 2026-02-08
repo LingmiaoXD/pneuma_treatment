@@ -8,7 +8,7 @@
         把更新后的表丢给yolo模型的time_reset.py处理，生成看向范围的时段和对齐后的数据
         然后05trajectory_with_nodeid_realworld.py处理
         然后09lane_node_realworld.py处理
-        10real_direction_mask.py处理
+        10real_direction_mask.py和10real_node_mask.py处理
         11merge_realworld_with_mask.py处理
         13realworld_merge_testdata把真实数据和轮巡数据合起来，真实数据代替轮巡数据的值
 '''
