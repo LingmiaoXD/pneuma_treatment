@@ -224,10 +224,10 @@ def main(visibility_csv_path, lanes_shp_path, graph_json_path, output_csv_path):
 if __name__ == "__main__":
     
     # 示例路径（请根据实际情况修改）
-    VISIBILITY_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\ok_data\0129094705_0001_coverage.csv"  # 标注时间段和可见范围
+    VISIBILITY_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\ok_data\c0127085746_0002_coverage.csv"  # 标注时间段和可见范围
     LANES_SHP_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\plots\buffer\minhang_raw_line.shp"  # 车道线shapefile
     GRAPH_JSON_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\data\road_graph\minhang_graph.json"  # 图结构
-    OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\minhang_lane_node_stats\0129094705_0001_patrol_mask.csv"  # 输出路径
+    OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\minhang_lane_node_stats\k0127085746_0002_patrol_mask.csv"  # 输出路径
     
     # 检查文件是否存在
     if not os.path.exists(VISIBILITY_CSV_PATH):

@@ -11,8 +11,8 @@ from shapefile_utils import read_shapefile_with_fallback
 
 if __name__ == "__main__":
     LANE_SHP_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\plots\buffer\minhang.shp"        # 车道段面数据
-    TRAJ_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\ok_data\0129094705_0001_aligned.csv"         # 轨迹数据，含 track_id,frame_number,corrected_x,corrected_y,width,height,class_name,speed_kmh 等字段
-    OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\trajectory_with_laneid\0129094705_0001.csv"          # 输出路径
+    TRAJ_CSV_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\ok_data\c0127085746_0002_aligned.csv"         # 轨迹数据，含 track_id,frame_number,corrected_x,corrected_y,width,height,class_name,speed_kmh 等字段
+    OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\trajectory_with_laneid\0127085746_0002.csv"          # 输出路径
     
     # 创建输出目录
     os.makedirs(os.path.dirname(OUTPUT_CSV), exist_ok=True)

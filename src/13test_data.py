@@ -158,8 +158,8 @@ if __name__ == "__main__":
     REMOVE_FILTERED = False  # 开发者可在此处修改：True或False
     
     LANE_NODE_STATS_PATH = r"../data/lane_node_stats/d210291000_lane_node_stats.csv"  # 完整的lane_node_stats
-    NODE_MASK_PATH = r"../data/lane_node_stats/d210291000_node_mask.csv"  # node_mask（格式：node_id,start,end）
-    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_test_data.csv"  # 输出路径（根据KEEP_OBSERVED决定保留盲点或可见点数据）
+    NODE_MASK_PATH = r"../data/lane_node_stats/d210291000_node_mask_15.csv"  # node_mask（格式：node_id,start,end）
+    OUTPUT_CSV = r"../data/lane_node_stats/d210291000_test_data_15mask.csv"  # 输出路径（根据KEEP_OBSERVED决定保留盲点或可见点数据）
     
     # 检查文件是否存在
     if not os.path.exists(LANE_NODE_STATS_PATH):

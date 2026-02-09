@@ -121,6 +121,15 @@ def main():
         {
             'file_path': '../data/draw/fintuned/minhang_inference_results_L1L2L3.csv',
             'label': '零样本迁移',
+            'color': 'purple',
+            'linestyle': '--',
+            'linewidth': 1,
+            'alpha': 0.4,
+            'value_column': 'avg_speed'
+        },
+        {
+            'file_path': '../data/draw/fintuned/minhang_inference_finetuned_only.csv',
+            'label': '单方向单周期微调',
             'color': 'green',
             'linestyle': '--',
             'linewidth': 1,
@@ -129,7 +138,7 @@ def main():
         },
         {
             'file_path': '../data/draw/fintuned/minhang_inference_results_finetuned.csv',
-            'label': '微调',
+            'label': '多方向多周期微调',
             'color': 'black',
             'linestyle': '-',
             'linewidth': 1,

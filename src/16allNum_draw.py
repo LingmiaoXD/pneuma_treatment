@@ -1,16 +1,14 @@
 """
-16loss_draw.py
+16allNum_draw.py
 
-生成流量热力图
+将节点车辆统计数据映射到 shapefile
 
 输入:
     - plots/buffer/d2trajectory_10_Buf.shp: 基础 shapefile
-    - data/model_output/all_metrics.csv: 时空误差统计数据
+    - data/lane_node_stats/xxx_lane_node_stats.csv: 节点车辆统计数据（来自 09lane_node_NumStatic.py）
 
 输出:
-    - plots/inference/loss_map/avg_speed.shp
-    - plots/inference/loss_map/avg_occupancy.shp
-    - plots/inference/loss_map/total_vehicles.shp
+    - plots/inference/vehicle_count/xxx_vehicle_count.shp: 包含车辆数量的 shapefile
 """
 
 import os
@@ -26,11 +24,15 @@ def main():
     
     # 输入文件路径
     base_shp = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
-    csv_file = os.path.join(project_root, "data/model_output/all_metrics.csv")
+    csv_file = os.path.join(project_root, "data/lane_node_stats/d210291000_lane_node_stats.csv")
     
-    # 输出目录
-    output_dir = os.path.join(project_root, "plots/inference/loss_mapl2")
+    # 输出目录和文件
+    output_dir = os.path.join(project_root, "plots/inference/vehicle_count")
     os.makedirs(output_dir, exist_ok=True)
+    
+    # 从输入文件名提取输出文件名
+    csv_basename = os.path.basename(csv_file).replace('_lane_node_stats.csv', '')
+    output_path = os.path.join(output_dir, f"{csv_basename}_vehicle_count.shp")
     
     # 读取基础 shapefile
     print("📦 正在读取基础 Shapefile...")
@@ -48,90 +50,60 @@ def main():
     print("\n📊 正在读取 CSV 数据...")
     df = pd.read_csv(csv_file)
     print(f"✅ 共读取 {len(df)} 行数据")
-    print(f"📋 CSV 列名: {list(df.columns)}")
+    print(f"� CSV 列名:e {list(df.columns)}")
     
-    # 获取所有唯一的 metric 类型
-    metrics = df['metric'].unique()
-    print(f"\n📌 发现的 metric 类型: {metrics}")
+    # 检查必要字段
+    if 'node_id' not in df.columns or 'total_vehicles' not in df.columns:
+        print(f"❌ 错误: CSV 文件缺少必要字段 'node_id' 或 'total_vehicles'")
+        return
     
-    # 为每个 metric 创建一个 shapefile
-    for metric in metrics:
-        print(f"\n{'='*60}")
-        print(f"� 处理 emetric: {metric}")
-        print(f"{'='*60}")
+    # 复制基础 GeoDataFrame
+    gdf_result = gdf_base.copy()
+    
+    # 初始化 total_vehicles 字段为 0
+    gdf_result['total_veh'] = 0  # 使用缩写以符合 shapefile 字段名长度限制
+    
+    # 遍历 CSV 中的每一行，根据 node_id 匹配 FID_
+    matched_count = 0
+    unmatched_nodes = []
+    
+    print("\n� 正在映射添数据...")
+    for idx, row in df.iterrows():
+        node_id = int(row['node_id'])
+        total_vehicles = int(row['total_vehicles'])
         
-        # 复制基础 GeoDataFrame
-        gdf_metric = gdf_base.copy()
+        # 在 GeoDataFrame 中查找匹配的 FID_
+        mask = gdf_result['FID_'] == node_id
         
-        # 筛选当前 metric 的数据
-        df_metric = df[df['metric'] == metric].copy()
-        print(f"📊 该 metric 共有 {len(df_metric)} 行数据")
-        
-        # 获取 CSV 中的所有列（除了 node_id 和 metric）
-        data_columns = [col for col in df_metric.columns if col not in ['node_id', 'metric']]
-        print(f"📋 要添加的数据列: {data_columns}")
-        
-        # 为每个数据列在 GeoDataFrame 中初始化为浮点数类型
-        for col in data_columns:
-            # 初始化为 NaN（浮点数类型），而不是 None
-            gdf_metric[col] = float('nan')
-        
-        # 遍历 CSV 中的每一行，根据 node_id 匹配 FID_
-        matched_count = 0
-        unmatched_nodes = []
-        
-        for idx, row in df_metric.iterrows():
-            node_id = int(row['node_id'])
-            
-            # 在 GeoDataFrame 中查找匹配的 FID_
-            mask = gdf_metric['FID_'] == node_id
-            
-            if mask.any():
-                # 将该行的所有数据列添加到对应的 FID_，最多保留4位小数
-                for col in data_columns:
-                    value = row[col]
-                    # 如果是数值类型，最多保留4位小数（不足4位保持原样）
-                    if pd.notna(value) and isinstance(value, (int, float)):
-                        # 先转为浮点数并四舍五入到4位小数
-                        rounded_value = round(float(value), 4)
-                        # 保持为浮点数类型，即使是整数值
-                        gdf_metric.loc[mask, col] = float(rounded_value)
-                    else:
-                        # 如果不是数值，保持为 NaN
-                        gdf_metric.loc[mask, col] = float('nan')
-                matched_count += 1
-            else:
-                unmatched_nodes.append(node_id)
-        
-        print(f"✅ 成功匹配 {matched_count}/{len(df_metric)} 个节点")
-        if unmatched_nodes:
-            print(f"⚠️ 未匹配的 node_id: {unmatched_nodes[:10]}{'...' if len(unmatched_nodes) > 10 else ''}")
-        
-        # 确保所有数据列都是浮点数类型
-        print(f"\n🔧 正在转换数据类型...")
-        for col in data_columns:
-            gdf_metric[col] = pd.to_numeric(gdf_metric[col], errors='coerce')
-        print(f"✅ 数据类型转换完成")
-        
-        # 打印数据类型信息
-        print(f"\n📊 字段数据类型:")
-        for col in data_columns:
-            print(f"   {col}: {gdf_metric[col].dtype}")
-        
-        # 保存为新的 shapefile
-        output_path = os.path.join(output_dir, f"{metric}.shp")
-        print(f"\n💾 正在保存到: {output_path}")
-        gdf_metric.to_file(output_path, driver='ESRI Shapefile')
-        print(f"✅ 成功保存 {metric}.shp")
+        if mask.any():
+            gdf_result.loc[mask, 'total_veh'] = total_vehicles
+            matched_count += 1
+        else:
+            unmatched_nodes.append(node_id)
+    
+    print(f"✅ 成功匹配 {matched_count}/{len(df)} 个节点")
+    if unmatched_nodes:
+        print(f"⚠️ 未匹配的 node_id 数量: {len(unmatched_nodes)}")
+        print(f"   示例: {unmatched_nodes[:10]}{'...' if len(unmatched_nodes) > 10 else ''}")
+    
+    # 打印统计信息
+    print(f"\n📊 车辆数量统计:")
+    print(f"   总节点数: {len(gdf_result)}")
+    print(f"   有车辆的节点数: {(gdf_result['total_veh'] > 0).sum()}")
+    print(f"   最大车辆数: {gdf_result['total_veh'].max()}")
+    print(f"   最小车辆数: {gdf_result['total_veh'].min()}")
+    print(f"   平均车辆数: {gdf_result['total_veh'].mean():.2f}")
+    
+    # 保存为新的 shapefile
+    print(f"\n💾 正在保存到: {output_path}")
+    gdf_result.to_file(output_path, driver='ESRI Shapefile')
+    print(f"✅ 成功保存 shapefile")
     
     print(f"\n{'='*60}")
-    print("🎉 所有 shapefile 创建完成！")
+    print("🎉 Shapefile 创建完成！")
     print(f"{'='*60}")
-    print(f"输出目录: {output_dir}")
-    for metric in metrics:
-        print(f"  - {metric}.shp")
+    print(f"输出文件: {output_path}")
 
 
 if __name__ == "__main__":
     main()
-
