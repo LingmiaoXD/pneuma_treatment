@@ -51,111 +51,58 @@ STATE_NAMES = {
     TrafficState.UNKNOWN: '无数据'
 }
 
-def interpolate_missing_values(speeds):
-    """对缺失值进行线性插值
+def calculate_trend(speeds, window=10, slope_threshold=1.5):
+    """计算速度趋势
     
     参数:
-        speeds: 速度序列（可能包含NaN）
-    
-    返回:
-        插值后的速度序列
-    """
-    speeds_series = pd.Series(speeds)
-    # 使用线性插值填充NaN值
-    speeds_interpolated = speeds_series.interpolate(method='linear', limit_direction='both')
-    return speeds_interpolated.values
-
-def calculate_pairwise_slopes(speeds):
-    """计算两两之间的斜率
-    
-    参数:
-        speeds: 速度序列（已插值）
-    
-    返回:
-        斜率列表
-    """
-    slopes = []
-    for i in range(len(speeds) - 1):
-        slope = speeds[i+1] - speeds[i]
-        slopes.append(slope)
-    return slopes
-
-def classify_state_by_voting(speed, future_speeds, slope_threshold=1.5, 
-                             lower_threshold=5, upper_threshold=25):
-    """通过投票方式分类交通状态
-    
-    参数:
-        speed: 当前速度
-        future_speeds: 未来的速度序列（时间窗口内）
+        speeds: 速度序列（未来window个时间点）
+        window: 趋势计算窗口大小
         slope_threshold: 斜率阈值，用于判断明显上升或下降（默认1.5）
-        lower_threshold: 下限阈值，默认为5
-        upper_threshold: 上限阈值，默认为25
     
     返回:
-        TrafficState枚举值
+        'increasing': 明显上升
+        'decreasing': 明显下降
+        'unstable': 不稳定
+        'stable': 稳定
     """
-    # 无数据或速度为NaN，默认为自由流
-    if pd.isna(speed):
-        return TrafficState.FREE_FLOW
+    if len(speeds) < 3:
+        return 'stable'
     
-    # 自由流：速度>upper_threshold（优先级最高）
-    if speed > upper_threshold:
-        return TrafficState.FREE_FLOW
+    # 计算线性回归斜率
+    x = np.arange(len(speeds))
+    y = np.array(speeds)
     
-    # 排队状态：速度<=lower_threshold（优先级第二）
-    if speed <= lower_threshold:
-        return TrafficState.QUEUED
+    # 去除NaN值
+    valid_mask = ~np.isnan(y)
+    if valid_mask.sum() < 3:
+        return 'stable'
     
-    # 速度在lower_threshold-upper_threshold之间，需要通过窗口内投票判断趋势
-    if len(future_speeds) < 2:
-        return TrafficState.SATURATED
+    x_valid = x[valid_mask]
+    y_valid = y[valid_mask]
     
-    # 对缺失值进行插值
-    interpolated_speeds = interpolate_missing_values(future_speeds)
+    # 线性拟合
+    slope = np.polyfit(x_valid, y_valid, 1)[0]
     
-    # 计算两两之间的斜率
-    slopes = calculate_pairwise_slopes(interpolated_speeds)
+    # 计算标准差（波动性）
+    std = np.std(y_valid)
     
-    if len(slopes) == 0:
-        return TrafficState.SATURATED
-    
-    # 统计各状态的投票数
-    vote_counts = {
-        TrafficState.FREE_FLOW: 0,
-        TrafficState.QUEUE_FORMING: 0,
-        TrafficState.QUEUE_DISSIPATING: 0,
-        TrafficState.SATURATED: 0,
-        TrafficState.QUEUED: 0
-    }
-    
-    # 对每个斜率进行判断
-    for slope in slopes:
-        if slope < -slope_threshold:  # 明显下降
-            vote_counts[TrafficState.QUEUE_FORMING] += 1
-        elif slope > slope_threshold:  # 明显上升
-            vote_counts[TrafficState.QUEUE_DISSIPATING] += 1
-        else:  # 稳定或小幅波动
-            vote_counts[TrafficState.SATURATED] += 1
-    
-    # 按优先级选择状态：优先自由流、排队状态，其次排队形成和排队消散，最后饱和流
-    # 由于自由流和排队状态已经在前面判断，这里只需要在剩余三个状态中选择
-    
-    # 找出票数最多的状态
-    max_votes = max(vote_counts[TrafficState.QUEUE_FORMING],
-                   vote_counts[TrafficState.QUEUE_DISSIPATING],
-                   vote_counts[TrafficState.SATURATED])
-    
-    # 按优先级返回：排队形成 > 排队消散 > 饱和流
-    if vote_counts[TrafficState.QUEUE_FORMING] == max_votes:
-        return TrafficState.QUEUE_FORMING
-    elif vote_counts[TrafficState.QUEUE_DISSIPATING] == max_votes:
-        return TrafficState.QUEUE_DISSIPATING
+    # 判断趋势
+    if abs(slope) < 0.3:  # 斜率很小，认为稳定
+        if std > 3:  # 但波动大
+            return 'unstable'
+        return 'stable'
+    elif slope > slope_threshold:  # 明显上升
+        return 'increasing'
+    elif slope < -slope_threshold:  # 明显下降
+        return 'decreasing'
     else:
-        return TrafficState.SATURATED
+        if std > 3:
+            return 'unstable'
+        return 'stable'
 
 def classify_traffic_state(speed, future_speeds, slope_threshold=1.5, 
                           lower_threshold=5, upper_threshold=25):
-    """分类交通状态（保持接口兼容）
+    """分类交通状态
     
     参数:
         speed: 当前速度
@@ -167,8 +114,27 @@ def classify_traffic_state(speed, future_speeds, slope_threshold=1.5,
     返回:
         TrafficState枚举值
     """
-    return classify_state_by_voting(speed, future_speeds, slope_threshold, 
-                                   lower_threshold, upper_threshold)
+    # 无数据或速度为NaN，默认为自由流
+    if pd.isna(speed):
+        return TrafficState.FREE_FLOW
+    
+    # 自由流：速度>upper_threshold
+    if speed > upper_threshold:
+        return TrafficState.FREE_FLOW
+    
+    # 排队状态：速度<=lower_threshold
+    if speed <= lower_threshold:
+        return TrafficState.QUEUED
+    
+    # 速度在lower_threshold-upper_threshold之间，需要判断趋势
+    trend = calculate_trend(future_speeds, slope_threshold=slope_threshold)
+    
+    if trend == 'decreasing':
+        return TrafficState.QUEUE_FORMING
+    elif trend == 'increasing':
+        return TrafficState.QUEUE_DISSIPATING
+    else:  # unstable or stable
+        return TrafficState.SATURATED
 
 def estimate_states(df, node_id, value_column='avg_speed', window=10, slope_threshold=1.5,
                    lower_threshold=5, upper_threshold=25):
@@ -334,7 +300,7 @@ def main():
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',
             'label': '真值',
             'value_column': 'avg_speed',
-            'window': 5,  # 真值使用10s窗口
+            'window': 10,  # 真值使用10s窗口
             'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
             'lower_threshold': 5,  # 速度下限阈值
             'upper_threshold': 25  # 速度上限阈值
@@ -343,46 +309,46 @@ def main():
             'file_path': '../data/draw/d210191000/inference_results.csv',
             'label': '本研究模型',
             'value_column': 'avg_speed',
-            'window': 5,  # 本研究模型使用10s窗口
-            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
+            'window': 10,  # 本研究模型使用10s窗口
+            'slope_threshold': 1.5,  # 本研究模型使用1.5斜率阈值
             'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'upper_threshold': 25  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/simple_stgnn_predictions.csv',
             'label': 'STGNN',
             'value_column': 'avg_speed',
-            'window': 5,  # 其他模型使用5s窗口
-            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
-            'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'window': 10,  # 其他模型使用5s窗口
+            'slope_threshold': 1.1,  # 其他模型使用1.3斜率阈值
+            'lower_threshold': 3,  # 速度下限阈值
+            'upper_threshold': 8  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/physical_prior_predictions.csv',
             'label': '物理模型法',
             'value_column': 'avg_speed',
             'window': 5,  # 其他模型使用5s窗口
-            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
-            'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'slope_threshold': 1.3,  # 其他模型使用1.3斜率阈值
+            'lower_threshold': 7,  # 速度下限阈值
+            'upper_threshold': 12  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/phase_template_results.csv',
             'label': '模板法',
             'value_column': 'avg_speed',
             'window': 5,  # 其他模型使用5s窗口
-            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
+            'slope_threshold': 1.3,  # 其他模型使用1.3斜率阈值
             'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'upper_threshold': 20  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/st_idw_results.csv',
             'label': 'ST-IDW',
             'value_column': 'avg_speed',
             'window': 5,  # 其他模型使用5s窗口
-            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
+            'slope_threshold': 1.3,  # 其他模型使用1.3斜率阈值
             'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'upper_threshold': 25  # 速度上限阈值
         }
     ]
     
