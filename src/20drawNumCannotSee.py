@@ -49,7 +49,8 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
     plt.rcParams['axes.unicode_minus'] = False
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # 修改为正方形图表
+    fig, ax = plt.subplots(figsize=(8, 8))
     
     # 限制时间范围并按时间排序
     df = df[(df['time'] >= start_frame) & (df['time'] <= end_frame)].copy()
@@ -101,16 +102,16 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     # 绘制每个段（在插值数据之上）
     for i, segment in enumerate(segments):
         if segment['observed'] and show_observed:
-            # 可见部分：蓝色点和蓝色实线
+            # 可见部分：蓝色点和蓝色实线，label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
             ax.plot(segment['times'], segment['speeds'], 'b-', linewidth=1,
-                   label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
+                   
                    zorder=3)
             ax.scatter(segment['times'], segment['speeds'], c='blue', s=5, marker='o',
                       zorder=4)
         elif not segment['observed'] and show_unobserved:
-            # 不可见部分：红色虚线
+            # 不可见部分：红色虚线，label='不可见段' if '不可见段' not in ax.get_legend_handles_labels()[1] else '',
             ax.plot(segment['times'], segment['speeds'], 'r--', linewidth=1, 
-                   label='不可见段' if '不可见段' not in ax.get_legend_handles_labels()[1] else '',
+                   
                    zorder=2)
         
         # 连接当前段和下一段之间的间隔（用红色虚线）
@@ -131,6 +132,15 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     ax.set_ylabel('实时流量', fontsize=12)
     ax.set_title(f'可见状态下的流量特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=14, fontweight='bold')
     ax.set_xlim(start_frame, end_frame)
+    
+    # 设置y轴范围为-5到55，但只显示0到50的刻度
+    ax.set_ylim(-0.1, 0.8)
+    ax.set_yticks([0, 0.2, 0.4, 0.6])
+    ax.set_xticks([100,200,300,400,500])
+    
+    # 设置坐标轴刻度标签字体大小为30
+    ax.tick_params(axis='both', which='major', labelsize=30)
+    
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
     ax.legend(loc='best', fontsize=10)
     
@@ -143,7 +153,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 49
+    NODE_ID = 42
     
     # 显示选项（True=显示，False=隐藏）
     SHOW_INTERPOLATED = False    # 插值数据（灰色虚线）
@@ -157,10 +167,10 @@ def main():
     interpolated_data_path = '../data/draw/d210191000/interpolated_data.csv'
     additional_data_path = '../data/draw/d210191000/inference_results.csv'
     
-    output_path = f'../data/draw/d210191000/node{NODE_ID}_num_visibility.png'
+    output_path = f'../data/draw/d210191000/missing/node{NODE_ID}_num_visibility.png'
 
-    start_frame = 5
-    end_frame = 824
+    start_frame = 100 #5
+    end_frame = 500 #824
     
     # 1. 加载数据
     print("加载数据...")

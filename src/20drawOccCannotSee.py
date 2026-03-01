@@ -9,7 +9,7 @@
     思路：
         先从d210291000_lane_node_stats.csv中筛选出node_id等于1的行，下面所有处理和显示的图表都局限于node_id等于1
         然后增加一列is_observed，对每一行基于node_id和time，对是否在可见轮巡窗口进行判断，是则为1，不是则为0
-        接着绘制随着时间avg_speed变化的折线，对于is_observed为1的部分用实线连接，为0的用虚线连接
+        接着绘制随着时间avg_occupancy变化的折线，对于is_observed为1的部分用实线连接，为0的用虚线连接
 
     输出：
         一张300pi图表png
@@ -36,7 +36,7 @@ def check_node_visibility(node_id, time, node_mask):
 
 def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, start_frame=5, end_frame=824, dpi=300,
                                show_interpolated=True, show_additional=True, show_observed=True, show_unobserved=True):
-    """绘制速度随时间变化的图表，区分可见和不可见部分，并添加插值数据和额外数据
+    """绘制占有率随时间变化的图表，区分可见和不可见部分，并添加插值数据和额外数据
     
     参数:
         show_interpolated: 是否显示插值数据（灰色虚线）
@@ -64,8 +64,8 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     if show_interpolated and len(interpolated_df) > 0:
         print(f"绘制插值数据: {len(interpolated_df)} 个点")
         print(f"插值数据时间范围: {interpolated_df['time'].min()} - {interpolated_df['time'].max()}")
-        print(f"插值速度范围: {interpolated_df['avg_speed'].min():.2f} - {interpolated_df['avg_speed'].max():.2f}")
-        ax.plot(interpolated_df['time'].values, interpolated_df['avg_speed'].values, 
+        print(f"插值占有率范围: {interpolated_df['avg_occupancy'].min():.2f} - {interpolated_df['avg_occupancy'].max():.2f}")
+        ax.plot(interpolated_df['time'].values, interpolated_df['avg_occupancy'].values, 
                 color='gray', linestyle='--', linewidth=1.5, alpha=0.6, 
                 label='线性插值结果', zorder=1)
     elif not show_interpolated:
@@ -75,14 +75,14 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     
     # 绘制额外数据（绿色实线）
     if show_additional and len(additional_df) > 0:
-        ax.plot(additional_df['time'].values, additional_df['avg_speed'].values, 
+        ax.plot(additional_df['time'].values, additional_df['avg_occupancy'].values, 
                 color='green', linestyle='-', linewidth=1.5, alpha=0.7, 
                 label='模型补全结果', zorder=1.5)
     elif not show_additional:
         print("额外数据显示已关闭")
     
     times = df['time'].values
-    speeds = df['avg_speed'].values
+    speeds = df['avg_occupancy'].values
     is_observed = df['is_observed'].values
     
     # 找出所有可见和不可见的连续段
@@ -129,16 +129,16 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     
     # 设置图表属性
     ax.set_xlabel('相对时间(s)', fontsize=12)
-    ax.set_ylabel('实时速度', fontsize=12)
-    ax.set_title(f'可见状态下的速度特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=14, fontweight='bold')
+    ax.set_ylabel('实时占有率', fontsize=12)
+    ax.set_title(f'可见状态下的占有率特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=14, fontweight='bold')
     ax.set_xlim(start_frame, end_frame)
     
     # 设置y轴范围为-5到55，但只显示0到50的刻度
-    ax.set_ylim(-5, 55)
-    ax.set_yticks([0, 20, 40])
+    ax.set_ylim(-0.1, 0.9)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8])
     ax.set_xticks([100,200,300,400,500])
     
-    # 设置坐标轴刻度标签字体大小为原来的两倍
+    # 设置坐标轴刻度标签字体大小为30
     ax.tick_params(axis='both', which='major', labelsize=30)
     
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
@@ -167,7 +167,7 @@ def main():
     interpolated_data_path = '../data/draw/d210191000/interpolated_data.csv'
     additional_data_path = '../data/draw/d210191000/inference_results.csv'
     
-    output_path = f'../data/draw/d210191000/missing/node{NODE_ID}_speed_visibility.png'
+    output_path = f'../data/draw/d210191000/missing/node{NODE_ID}_occ_visibility.png'
 
     start_frame = 100 #5
     end_frame = 500 #824
@@ -196,16 +196,16 @@ def main():
     print(f"插值数据找到 {len(node1_interpolated)} 条记录")
     print(f"额外数据找到 {len(node1_additional)} 条记录")
     
-    # 将 interpolated_avg_speed 转换为 avg_speed
+    # 将 interpolated_avg_occupancy 转换为 avg_occupancy
     if len(node1_interpolated) > 0:
         print(f"\n插值数据列名: {node1_interpolated.columns.tolist()}")
-        if 'interpolated_avg_speed' in node1_interpolated.columns:
-            node1_interpolated['avg_speed'] = node1_interpolated['interpolated_avg_speed']*100
-            print(f"插值数据 avg_speed 范围: {node1_interpolated['avg_speed'].min():.2f} - {node1_interpolated['avg_speed'].max():.2f}")
-        elif 'avg_speed' not in node1_interpolated.columns:
-            print("警告：插值数据中既没有 'interpolated_avg_speed' 也没有 'avg_speed' 列！")
+        if 'interpolated_avg_occupancy' in node1_interpolated.columns:
+            node1_interpolated['avg_occupancy'] = node1_interpolated['interpolated_avg_occupancy']
+            print(f"插值数据 avg_occupancy 范围: {node1_interpolated['avg_occupancy'].min():.2f} - {node1_interpolated['avg_occupancy'].max():.2f}")
+        elif 'avg_occupancy' not in node1_interpolated.columns:
+            print("警告：插值数据中既没有 'interpolated_avg_occupancy' 也没有 'avg_occupancy' 列！")
         else:
-            print("插值数据已包含 'avg_speed' 列，无需转换")
+            print("插值数据已包含 'avg_occupancy' 列，无需转换")
     else:
         print("警告：没有找到符合条件的插值数据！")
     

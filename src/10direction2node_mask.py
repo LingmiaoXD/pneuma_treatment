@@ -150,9 +150,9 @@ def generate_node_mask(patrol_mask_path, graph_path, output_path):
 
 if __name__ == '__main__':
     # 设置文件路径
-    patrol_mask_path = '../data/lane_node_stats/d_patrol_mask_relative_15.csv'
+    patrol_mask_path = '../data/lane_node_stats/d_patrol_mask_much_more.csv'
     graph_path = '../data/road_graph/graph_10m.json'
-    output_path = '../data/lane_node_stats/d210291000_node_mask_15.csv'
+    output_path = '../data/lane_node_stats/d210291000_node_mask_much_more.csv'
     
     # 生成节点mask
     generate_node_mask(patrol_mask_path, graph_path, output_path)
