@@ -326,7 +326,7 @@ def main():
     NODE_ID = 42
     start_frame = 34   #34
     end_frame = 824     #824
-    output_path = f'../data/draw/d210191000/vs/node{NODE_ID}_state_timeline.png'
+    output_path = f'../data/draw/d210191000/node{NODE_ID}_state_timeline.png'
     
     # ========== 数据配置 ==========
     data_configs = [
@@ -334,26 +334,17 @@ def main():
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',
             'label': '真值',
             'value_column': 'avg_speed',
-            'window': 2,  # 真值使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
+            'window': 5,  # 真值使用10s窗口
+            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
             'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'upper_threshold': 25  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/inference_results.csv',
-            'label': '本研究模型1',
+            'label': '本研究模型',
             'value_column': 'avg_speed',
-            'window': 2,  # 本研究模型使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
-            'lower_threshold': 5,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
-        },
-        {
-            'file_path': '../data/draw/d210191000/melt/0302l3/inference_results_L3.csv',
-            'label': '本研究模型March',
-            'value_column': 'avg_speed',
-            'window': 2,  # 本研究模型使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
+            'window': 5,  # 本研究模型使用10s窗口
+            'slope_threshold': 1.5,  # 真值使用1.5斜率阈值
             'lower_threshold': 5,  # 速度下限阈值
             'upper_threshold': 17  # 速度上限阈值
         },
