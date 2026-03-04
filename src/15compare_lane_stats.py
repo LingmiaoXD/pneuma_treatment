@@ -31,14 +31,14 @@ LANE_NODE_STATS_PATH = r'../data/draw/d210191000/d210291000_lane_node_stats.csv'
 
 
 # 测试数据（模型结果）CSV 路径
-OUTPUT_CSV_PATH = r"../data/draw/d210191000/melt/0131绝对时间效果最好/inference_results.csv"
+OUTPUT_CSV_PATH = r"../data/draw/d210191000/vs/simple_stgnn/simple_stgnn_predictions_class.csv"
 
 # 可选：要参与比较的指标列列表；
 # 如果为 None，则自动从两个文件的公共数值型列中推断（排除 node_id, time）。
 VALUE_COLUMNS: Optional[List[str]] = None
 
 # 可选：结果指标输出路径；如果为 None，则只在屏幕上打印，不另存文件。
-REPORT_PATH: Optional[str] = r"../data/draw/d210191000/melt/0131绝对时间效果最好/all_metrics.csv"
+REPORT_PATH: Optional[str] = r"../data/draw/d210191000/vs/simple_stgnn/all_metrics_class.csv"
 
 # =====================================================
 

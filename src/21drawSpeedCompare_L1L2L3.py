@@ -29,6 +29,8 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
             - 'linestyle': str，线型 ('-', '--', '-.', ':')
             - 'linewidth': float，线宽（可选，默认1.5）
             - 'alpha': float，透明度（可选，默认1.0）
+            - 'marker': str，标记点样式（可选，如'o', 's', '^'等）
+            - 'markersize': float，标记点大小（可选，默认4）
         node_id: int，节点ID
         output_path: str，输出文件路径
         start_frame: int，起始时间帧
@@ -63,11 +65,18 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
         linestyle = config.get('linestyle', '-')
         linewidth = config.get('linewidth', 1.5)
         alpha = config.get('alpha', 1.0)
+        marker = config.get('marker', None)
+        markersize = config.get('markersize', 4)
+        markerfacecolor = config.get('markerfacecolor', color)
+        markeredgecolor = config.get('markeredgecolor', color)
+        markeredgewidth = config.get('markeredgewidth', 0.5)
         
         # 绘制曲线
         ax.plot(df['time'].values, df['avg_speed'].values, 
                 color=color, linestyle=linestyle, linewidth=linewidth, 
-                alpha=alpha, label=label)
+                alpha=alpha, label=label, marker=marker, markersize=markersize,
+                markerfacecolor=markerfacecolor, markeredgecolor=markeredgecolor,
+                markeredgewidth=markeredgewidth)
         
         print(f"绘制 {label}: {len(df)} 个点, 时间范围 {df['time'].min()}-{df['time'].max()}, "
               f"速度范围 {df['avg_speed'].min():.2f}-{df['avg_speed'].max():.2f}")
@@ -200,17 +209,26 @@ def main():
         {
             'file_path': '../data/draw/d210191000/melt/0302l3/inference_results_L3.csv',
             'label': '0302l3',
-            'color': 'black',
-            'linestyle': '-',
-            'linewidth': 1,
+            'color': 'red',
+            'linestyle': '--',
+            'linewidth': 1.5,
             'alpha': 1.0,
+            'value_column': 'avg_speed'
+        },
+        {
+            'file_path': '../data/draw/d210191000/melt/0303stgnnl2l3/hybrid_simple_stgnn_l2l3_predictions.csv',
+            'label': '0303stgnnl2l3',
+            'color': 'orange',
+            'linestyle': '--',
+            'linewidth': 1,
+            'alpha': 0.4,
             'value_column': 'avg_speed'
         },
         {
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',
             'label': '真值',
-            'color': 'red',
-            'linestyle': '--',
+            'color': 'black',
+            'linestyle': '-',
             'linewidth': 1,
             'alpha': 1.0,
             'value_column': 'avg_speed'  # 数据列名

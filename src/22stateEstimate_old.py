@@ -342,7 +342,7 @@ def main():
             'upper_threshold': 20  # 速度上限阈值
         },
         {
-            'file_path': '../data/draw/d210191000/st_idw_results.csv',
+            'file_path': '../data/draw/d210191000/vs/st_idw/st_idw_results.csv',
             'label': 'ST-IDW',
             'value_column': 'avg_speed',
             'window': 5,  # 其他模型使用5s窗口

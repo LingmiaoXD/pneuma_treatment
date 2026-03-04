@@ -126,7 +126,7 @@ def main():
             'value_column': 'total_vehicles'
         },
         {
-            'file_path': '../data/draw/d210191000/st_idw_results.csv',
+            'file_path': '../data/draw/d210191000/vs/st_idw/st_idw_results.csv',
             'label': 'ST-IDW',
             'color': 'green',
             'linestyle': '--',

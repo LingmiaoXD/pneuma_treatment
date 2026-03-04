@@ -26,10 +26,10 @@ def main():
     
     # 输入文件路径
     base_shp = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
-    csv_file = os.path.join(project_root, "data/draw/d210191000/melt/0302l1/all_metrics.csv")
+    csv_file = os.path.join(project_root, "data/draw/d210191000/melt/0303stgnnl2l3/all_metrics.csv")
     
     # 输出目录
-    output_dir = os.path.join(project_root, "plots/inference/March/loss_mapl1")
+    output_dir = os.path.join(project_root, "plots/inference/March/loss_stgnnl2l3")
     os.makedirs(output_dir, exist_ok=True)
     
     # 读取基础 shapefile

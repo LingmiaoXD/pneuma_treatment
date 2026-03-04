@@ -28,7 +28,7 @@ def main():
     
     # 输入文件路径
     base_shp = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
-    csv_file = os.path.join(project_root, "data/draw/d210191000/st_idw_results.csv")
+    csv_file = os.path.join(project_root, "data/draw/d210191000/melt/0303stgnnl2l3/hybrid_simple_stgnn_l2l3_predictions.csv")
     
     # 输出目录
     output_dir = os.path.join(project_root, "plots/inference/time_allnode")

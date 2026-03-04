@@ -100,7 +100,7 @@ def main():
     end_frame = 600 #824
     
     # 输出路径
-    output_path = f'../data/draw/d210191000/node{NODE_ID}_speed_compare.png'
+    output_path = f'../data/draw/d210191000/vs/node{NODE_ID}_speed_compare.png'
     
     # ========== 数据配置 ==========
     # 每条曲线的配置：文件路径、标签、颜色、线型等
@@ -118,7 +118,7 @@ def main():
     '''
     curve_configs = [
         {
-            'file_path': '../data/draw/d210191000/st_idw_results.csv',
+            'file_path': '../data/draw/d210191000/vs/st_idw/st_idw_results.csv',
             'label': 'ST-IDW',
             'color': 'y',
             'linestyle': '--',
@@ -127,7 +127,7 @@ def main():
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/phase_template_results.csv',
+            'file_path': '../data/draw/d210191000/vs/phase_template/phase_template_results.csv',
             'label': '模板法',
             'color': 'blue',
             'linestyle': '--',
@@ -136,7 +136,7 @@ def main():
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/physical_prior_predictions.csv',
+            'file_path': '../data/draw/d210191000/vs/physical_prior/physical_prior_predictions.csv',
             'label': '物理模型',
             'color': 'purple',
             'linestyle': '--',
@@ -145,7 +145,7 @@ def main():
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/simple_stgnn_predictions.csv',
+            'file_path': '../data/draw/d210191000/vs/simple_stgnn/simple_stgnn_predictions_class10.csv',
             'label': 'STGNN',
             'color': 'green',
             'linestyle': '--',
@@ -154,21 +154,11 @@ def main():
             'value_column': 'avg_speed'
         },
 
-
-        {
-            'file_path': '../data/draw/d210191000/inference_results.csv',
-            'label': '本研究模型',
-            'color': 'black',
-            'linestyle': '-',
-            'linewidth': 1,
-            'alpha': 1.0,
-            'value_column': 'avg_speed'
-        },
         {
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',
             'label': '真值',
-            'color': 'red',
-            'linestyle': '--',
+            'color': 'black',
+            'linestyle': '-',
             'linewidth': 1,
             'alpha': 1.0,
             'value_column': 'avg_speed'  # 数据列名

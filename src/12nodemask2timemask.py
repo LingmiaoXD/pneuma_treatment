@@ -153,9 +153,9 @@ if __name__ == "__main__":
     # GRAPH_JSON_PATH = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\data\road_graph\minhang_graph.json"  # 图结构文件
     # OUTPUT_CSV = r"E:\大学文件\研二\交通分析\代码\pneuma_treatment\yolodata\minhang_lane_node_stats\0129094705_0001_node_time_mask.csv"  # 输出：时间步级别的mask
     
-    INPUT_CSV = '../data/lane_node_stats/n_patrol_mask_relative_5.csv'  # 输入：节点级别的时间段mask
+    INPUT_CSV = '../data/lane_node_stats/d210291000_node_mask_5.csv'  # 输入：节点级别的时间段mask
     GRAPH_JSON_PATH = '../data/road_graph/graph_10m.json'  # 图结构文件
-    OUTPUT_CSV = '../data/lane_node_stats/n210291000_time_mask_5.csv'  # 输出：时间步级别的mask
+    OUTPUT_CSV = '../data/lane_node_stats/d210291000_node_mask_5.csv'  # 输出：时间步级别的mask
 
     # 检查文件是否存在
     if not os.path.exists(INPUT_CSV):
