@@ -323,7 +323,7 @@ def plot_state_timeline(state_configs, node_id, output_path, start_frame=5, end_
 
 def main():
     # ========== 配置参数 ==========
-    NODE_ID = 79
+    NODE_ID = 4
     start_frame = 250   #34
     end_frame = 600     #824
     output_path = f'../data/draw/d210191000/melt/node{NODE_ID}_state_timeline.png'
@@ -335,26 +335,26 @@ def main():
             'label': '真值',
             'value_column': 'avg_speed',
             'window': 5,  # 真值使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
-            'lower_threshold': 7,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'slope_threshold': 0.155,  # 真值使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 20  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/melt/0302l3/inference_results_L3.csv',
             'label': 'L3',
             'value_column': 'avg_speed',
             'window': 5,  # 本研究模型使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
-            'lower_threshold': 7,  # 速度下限阈值
-            'upper_threshold': 17  # 速度上限阈值
+            'slope_threshold': 0.155,  # 真值使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 20  # 速度上限阈值
         },
         {
             'file_path': '../data/draw/d210191000/melt/0302l2/inference_results_L2.csv',
             'label': 'L2',
             'value_column': 'avg_speed',
             'window': 5,  # 本研究模型使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
-            'lower_threshold': 7,  # 速度下限阈值
+            'slope_threshold': 0.155,  # 真值使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
             'upper_threshold': 17  # 速度上限阈值
         },
         {
@@ -362,11 +362,19 @@ def main():
             'label': 'L1',
             'value_column': 'avg_speed',
             'window': 5,  # 本研究模型使用10s窗口
-            'slope_threshold': 1.2,  # 真值使用1.5斜率阈值
-            'lower_threshold': 7,  # 速度下限阈值
+            'slope_threshold': 0.155,  # 真值使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
             'upper_threshold': 17  # 速度上限阈值
         },
-        
+        {
+            'file_path': '../data/draw/d210191000/melt/0303stgnnl2l3/hybrid_simple_stgnn_l2l3_predictions.csv',
+            'label': 'STGNN',
+            'value_column': 'avg_speed',
+            'window': 5,  # 本研究模型使用10s窗口
+            'slope_threshold': 0.155,  # 真值使用1.5斜率阈值
+            'lower_threshold': 5,  # 速度下限阈值
+            'upper_threshold': 17  # 速度上限阈值
+        }
         
     ]
     

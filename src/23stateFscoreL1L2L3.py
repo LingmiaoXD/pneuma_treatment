@@ -529,8 +529,8 @@ def main():
     NODE_ID = 4
     start_frame = 250
     end_frame = 600
-    output_path = f'../data/draw/d210191000/vs/node{NODE_ID}_fscore_metrics.csv'
-    transition_output_path = f'../data/draw/d210191000/vs/node{NODE_ID}_transition_metrics.csv'
+    output_path = f'../data/draw/d210191000/melt/node{NODE_ID}_fscore_metrics.csv'
+    transition_output_path = f'../data/draw/d210191000/melt/node{NODE_ID}_transition_metrics.csv'
     
     # 转换事件匹配窗口（时间步）
     TRANSITION_TIME_WINDOW = 30  # 可调整参数
@@ -559,22 +559,31 @@ def main():
             'upper_threshold': 17
         },
         {
-            'file_path': '../data/draw/d210191000/vs/simple_stgnn/simple_stgnn_predictions_class10.csv',
+            'file_path': '../data/draw/d210191000/melt/0303stgnnl2l3/hybrid_simple_stgnn_l2l3_predictions.csv',
             'label': 'STGNN',
             'value_column': 'avg_speed',
             'window': 5,
             'slope_threshold': 0.155,
             'lower_threshold': 5,
-            'upper_threshold': 18
+            'upper_threshold': 17
         },
         {
-            'file_path': '../data/draw/d210191000/vs/physical_prior/physical_prior_predictions.csv',
-            'label': '物理模型法',
+            'file_path': '../data/draw/d210191000/melt/0302l2/inference_results_L2.csv',
+            'label': 'L2',
             'value_column': 'avg_speed',
             'window': 5,
             'slope_threshold': 0.155,
             'lower_threshold': 5,
-            'upper_threshold': 15
+            'upper_threshold': 17
+        },
+        {
+            'file_path': '../data/draw/d210191000/melt/0302l1/inference_results_L1.csv',
+            'label': 'L1',
+            'value_column': 'avg_speed',
+            'window': 5,
+            'slope_threshold': 0.155,
+            'lower_threshold': 5,
+            'upper_threshold': 17
         }
     ]
     

@@ -245,13 +245,18 @@ def main():
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/vs/simple_stgnn/simple_stgnn_predictions_class10.csv',
+            'file_path': '../data/draw/d210191000/melt/0303stgnnl2l3/hybrid_simple_stgnn_l2l3_predictions.csv',
             'label': 'STGNN',
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/vs/physical_prior/physical_prior_predictions.csv',
-            'label': '物理模型法',
+            'file_path': '../data/draw/d210191000/melt/0302l2/inference_results_L2.csv',
+            'label': 'L2',
+            'value_column': 'avg_speed'
+        },
+        {
+            'file_path': '../data/draw/d210191000/melt/0302l1/inference_results_L1.csv',
+            'label': 'L1',
             'value_column': 'avg_speed'
         }
     ]
