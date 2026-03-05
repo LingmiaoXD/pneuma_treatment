@@ -96,7 +96,7 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 79
+    NODE_ID = 42
     
     # 时间范围
     start_frame = 250 #5

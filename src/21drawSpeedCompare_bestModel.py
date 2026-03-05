@@ -96,7 +96,7 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 79
+    NODE_ID = 42
     
     # 时间范围
     start_frame = 250 #5
@@ -184,6 +184,15 @@ def main():
             'linewidth': 1,
             'alpha': 1.0,
             'value_column': 'avg_speed'  # 数据列名
+        },
+        {
+            'file_path': '../data/draw/d210191000/vs/physical_prior/physical_prior_predictions.csv',
+            'label': 'physical',
+            'color': 'blue',
+            'linestyle': '--',
+            'linewidth': 1,
+            'alpha': 0.5,
+            'value_column': 'avg_speed'
         },
         {
             'file_path': '../data/draw/d210191000/vs/simple_stgnn/simple_stgnn_predictions_class10.csv',

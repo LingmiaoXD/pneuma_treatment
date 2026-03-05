@@ -19,7 +19,7 @@ from shapefile_utils import read_shapefile_with_fallback
 
 def main():
     # ========== 配置参数 ==========
-    TARGET_TIME = 170  # 要筛选的时间值
+    TARGET_TIME = 142  # 要筛选的时间值
     # ==============================
     
     # 获取项目根目录

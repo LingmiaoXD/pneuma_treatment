@@ -323,7 +323,7 @@ def plot_state_timeline(state_configs, node_id, output_path, start_frame=5, end_
 
 def main():
     # ========== 配置参数 ==========
-    NODE_ID = 79
+    NODE_ID = 42
     start_frame = 250   #34
     end_frame = 600     #824
     output_path = f'../data/draw/d210191000/vs/node{NODE_ID}_state_timeline.png'
