@@ -81,6 +81,9 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
     ax.set_title(title, fontsize=14, fontweight='bold')
     
     ax.set_xlim(start_frame, end_frame)
+    # 设置y轴范围为-5到60，但只显示0-50的刻度
+    ax.set_ylim(-5, 60)
+    ax.set_yticks(range(0, 51, 10))  # 0, 10, 20, 30, 40, 50
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
     ax.legend(loc='best', fontsize=10)
     
@@ -93,7 +96,7 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 42
+    NODE_ID = 79
     
     # 时间范围
     start_frame = 250 #5
@@ -120,7 +123,7 @@ def main():
         {
             'file_path': '../data/draw/d210191000/vs/st_idw/st_idw_results.csv',
             'label': 'ST-IDW',
-            'color': 'y',
+            'color': 'green',
             'linestyle': '--',
             'linewidth': 1,
             'alpha': 0.5,
@@ -144,15 +147,7 @@ def main():
             'alpha': 0.5,
             'value_column': 'avg_speed'
         },
-        {
-            'file_path': '../data/draw/d210191000/vs/simple_stgnn/simple_stgnn_predictions_class10.csv',
-            'label': 'STGNN',
-            'color': 'green',
-            'linestyle': '--',
-            'linewidth': 1,
-            'alpha': 0.5,
-            'value_column': 'avg_speed'
-        },
+        
 
         {
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',

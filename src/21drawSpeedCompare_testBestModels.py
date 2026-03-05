@@ -100,7 +100,7 @@ def main():
     end_frame = 600 #824
     
     # 输出路径
-    output_path = f'../data/draw/d210191000/melt/testnode{NODE_ID}_speed_compare.png'
+    output_path = f'../data/draw/d210191000/obs_patrol/testnode{NODE_ID}_speed_compare.png'
     
     # ========== 数据配置 ==========
     # 每条曲线的配置：文件路径、标签、颜色、线型等
@@ -153,51 +153,42 @@ def main():
         },
     '''
     curve_configs = [
-        
         {
-            'file_path': '../data/draw/d210191000/melt/0129增强训练已知点监督的L1/inference_results_L1.csv',
-            'label': '0129增强训练已知点监督的L1',
-            'color': 'orange',
-            'linestyle': '--',
-            'linewidth': 1,
-            'alpha': 0.5,
-            'value_column': 'avg_speed'
-        },
-        {
-            'file_path': '../data/draw/d210191000/melt/0131绝对时间效果最好/inference_results.csv',
-            'label': '0131绝对时间效果最好',
+            'file_path': '../data/draw/d210191000/obs_patrol/old/inference_results_15s.csv',
+            'label': '15s',
             'color': 'blue',
             'linestyle': '--',
             'linewidth': 1,
-            'alpha': 0.5,
+            'alpha': 0.7,
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/d210191000/melt/0131相对patrol/inference_results_relative.csv',
-            'label': '0131相对patrol',
-            'color': 'purple',
+            'file_path': '../data/draw/d210191000/obs_patrol/old/inference_results_10s.csv',
+            'label': '10s',
+            'color': 'green',
             'linestyle': '--',
             'linewidth': 1,
-            'alpha': 0.5,
+            'alpha': 0.7,
             'value_column': 'avg_speed'
         },
+
         
 
 
         {
-            'file_path': '../data/draw/d210191000/inference_results.csv',
+            'file_path': '../data/draw/d210191000/melt/0302l3/inference_results_L3.csv',
             'label': '原始完整模型',
-            'color': 'black',
-            'linestyle': '-',
-            'linewidth': 1,
+            'color': 'red',
+            'linestyle': '--',
+            'linewidth': 1.5,
             'alpha': 1.0,
             'value_column': 'avg_speed'
         },
         {
             'file_path': '../data/draw/d210191000/d210291000_lane_node_stats.csv',
             'label': '真值',
-            'color': 'red',
-            'linestyle': '--',
+            'color': 'black',
+            'linestyle': '-',
             'linewidth': 1,
             'alpha': 1.0,
             'value_column': 'avg_speed'  # 数据列名
