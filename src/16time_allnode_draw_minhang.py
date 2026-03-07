@@ -19,7 +19,7 @@ from shapefile_utils import read_shapefile_with_fallback
 
 def main():
     # ========== 配置参数 ==========
-    TARGET_TIME = 162  # 要筛选的时间值
+    TARGET_TIME = 318  # 要筛选的时间值
     # ==============================
     
     # 获取项目根目录
@@ -27,11 +27,11 @@ def main():
     project_root = os.path.dirname(script_dir)
     
     # 输入文件路径
-    base_shp = os.path.join(project_root, "plots/buffer/d2trajectory_10_Buf.shp")
-    csv_file = os.path.join(project_root, "data/draw/d210191000/d210291000_lane_node_stats.csv")
+    base_shp = os.path.join(project_root, "plots/buffer/minhang.shp")
+    csv_file = os.path.join(project_root, "data/draw/minhang/k0127085212_0001_test.csv")
     
     # 输出目录
-    output_dir = os.path.join(project_root, "plots/inference/patrol_allnode")
+    output_dir = os.path.join(project_root, "plots/map_minhang/k01270852_318")
     os.makedirs(output_dir, exist_ok=True)
     
     # 读取基础 shapefile
@@ -40,9 +40,9 @@ def main():
     print(f"✅ 共加载 {len(gdf_base)} 个要素")
     print(f"📋 Shapefile 列名: {list(gdf_base.columns)}")
     
-    # 确保 FID_ 字段存在
-    if 'FID_' not in gdf_base.columns:
-        print(f"❌ 错误: Shapefile 中未找到 'FID_' 字段")
+    # 确保 node_id 字段存在
+    if 'node_id' not in gdf_base.columns:
+        print(f"❌ 错误: Shapefile 中未找到 'node_id' 字段")
         print(f"   可用字段: {list(gdf_base.columns)}")
         return
     
@@ -80,18 +80,18 @@ def main():
         # 初始化为 -1，表示空值
         gdf_result[col] = -1.0
     
-    # 遍历 CSV 中的每一行，根据 node_id 匹配 FID_
+    # 遍历 CSV 中的每一行，根据 node_id 匹配 shapefile 中的 node_id
     matched_count = 0
     unmatched_nodes = []
     
     for idx, row in df.iterrows():
         node_id = int(row['node_id'])
         
-        # 在 GeoDataFrame 中查找匹配的 FID_
-        mask = gdf_result['FID_'] == node_id
+        # 在 GeoDataFrame 中查找匹配的 node_id
+        mask = gdf_result['node_id'] == node_id
         
         if mask.any():
-            # 将该行的所有数据列添加到对应的 FID_，最多保留4位小数
+            # 将该行的所有数据列添加到对应的 node_id，最多保留4位小数
             for col in data_columns:
                 value = row[col]
                 # 如果是数值类型，最多保留4位小数（不足4位保持原样）
