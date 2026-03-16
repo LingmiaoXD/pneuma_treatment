@@ -148,10 +148,19 @@ def main():
         },
         {
             'file_path': '../data/draw/fintuned/minhang_inference_results_finetuned.csv',
-            'label': '微调',
-            'color': 'black',
-            'linestyle': '-',
+            'label': '单方向',
+            'color': 'blue',
+            'linestyle': '--',
             'linewidth': 1,
+            'alpha': 1,
+            'value_column': 'avg_occupancy'
+        },
+        {
+            'file_path': '../data/draw/fintuned/minhang_inference_results_finetuned.csv',
+            'label': '双方向',
+            'color': 'red',
+            'linestyle': '--',
+            'linewidth': 1.5,
             'alpha': 1,
             'value_column': 'avg_occupancy'
         },
@@ -160,8 +169,8 @@ def main():
         {
             'file_path': '../data/draw/fintuned/k0127085203_0001_lane_node_state.csv',
             'label': '真值',
-            'color': 'red',
-            'linestyle': '--',
+            'color': 'black',
+            'linestyle': '-',
             'linewidth': 1,
             'alpha': 0.8,
             'value_column': 'avg_occupancy'  # 数据列名

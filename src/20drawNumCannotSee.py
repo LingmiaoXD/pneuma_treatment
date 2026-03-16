@@ -34,6 +34,13 @@ def check_node_visibility(node_id, time, node_mask):
     
     return False
 
+def denormalize_flow(normalized_value):
+    """将归一化的流量值还原为原始值
+    归一化公式: (log(1+x))/log(15)
+    反向公式: x = 15^y - 1
+    """
+    return np.power(15, normalized_value) - 1
+
 def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, start_frame=5, end_frame=824, dpi=300,
                                show_interpolated=True, show_additional=True, show_observed=True, show_unobserved=True):
     """绘制流量随时间变化的图表，区分可见和不可见部分，并添加插值数据和额外数据
@@ -49,8 +56,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
     plt.rcParams['axes.unicode_minus'] = False
     
-    # 修改为正方形图表
-    fig, ax = plt.subplots(figsize=(8, 8))
+    fig, ax = plt.subplots(figsize=(10, 6))
     
     # 限制时间范围并按时间排序
     df = df[(df['time'] >= start_frame) & (df['time'] <= end_frame)].copy()
@@ -59,6 +65,14 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     interpolated_df = interpolated_df.sort_values('time')
     additional_df = additional_df[(additional_df['time'] >= start_frame) & (additional_df['time'] <= end_frame)].copy()
     additional_df = additional_df.sort_values('time')
+    
+    # 将归一化的流量数据还原为原始值
+    if len(df) > 0:
+        df['total_vehicles'] = denormalize_flow(df['total_vehicles'])
+    if len(interpolated_df) > 0:
+        interpolated_df['total_vehicles'] = denormalize_flow(interpolated_df['total_vehicles'])
+    if len(additional_df) > 0:
+        additional_df['total_vehicles'] = denormalize_flow(additional_df['total_vehicles'])
     
     # 首先绘制插值数据（灰色虚线，在最下层）
     if show_interpolated and len(interpolated_df) > 0:
@@ -133,13 +147,9 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     ax.set_title(f'可见状态下的流量特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=14, fontweight='bold')
     ax.set_xlim(start_frame, end_frame)
     
-    # 设置y轴范围为-5到55，但只显示0到50的刻度
-    ax.set_ylim(-0.1, 0.8)
-    ax.set_yticks([0, 0.2, 0.4, 0.6])
-    ax.set_xticks([100,200,300,400,500])
-    
-    # 设置坐标轴刻度标签字体大小为30
-    ax.tick_params(axis='both', which='major', labelsize=30)
+    # 设置y轴范围为-1到11，刻度为0到10
+    ax.set_ylim(-1, 11)
+    ax.set_yticks(range(0, 11, 2))  # 0, 2, 4, 6, 8, 10
     
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
     ax.legend(loc='best', fontsize=10)
@@ -153,7 +163,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 42
+    NODE_ID = 34
     
     # 显示选项（True=显示，False=隐藏）
     SHOW_INTERPOLATED = False    # 插值数据（灰色虚线）
@@ -164,13 +174,13 @@ def main():
     # 文件路径
     lane_stats_path = '../data/draw/d210191000/d210291000_lane_node_stats.csv'
     node_mask_path = '../data/draw/d210191000/d210291000_node_mask.csv'
-    interpolated_data_path = '../data/draw/d210191000/interpolated_data.csv'
+    interpolated_data_path = '../data/draw/d210191000/interpolated_data_2.csv'
     additional_data_path = '../data/draw/d210191000/inference_results.csv'
     
     output_path = f'../data/draw/d210191000/missing/node{NODE_ID}_num_visibility.png'
 
-    start_frame = 100 #5
-    end_frame = 500 #824
+    start_frame = 250 #5
+    end_frame = 600 #824
     
     # 1. 加载数据
     print("加载数据...")
@@ -201,7 +211,7 @@ def main():
         print(f"\n插值数据列名: {node1_interpolated.columns.tolist()}")
         if 'interpolated_total_vehicles' in node1_interpolated.columns:
             node1_interpolated['total_vehicles'] = node1_interpolated['interpolated_total_vehicles']
-            print(f"插值数据 total_vehicles 范围: {node1_interpolated['total_vehicles'].min():.2f} - {node1_interpolated['total_vehicles'].max():.2f}")
+            print(f"插值数据 total_vehicles 范围（归一化）: {node1_interpolated['total_vehicles'].min():.2f} - {node1_interpolated['total_vehicles'].max():.2f}")
         elif 'total_vehicles' not in node1_interpolated.columns:
             print("警告：插值数据中既没有 'interpolated_total_vehicles' 也没有 'total_vehicles' 列！")
         else:

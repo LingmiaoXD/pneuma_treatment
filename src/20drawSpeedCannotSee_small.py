@@ -45,17 +45,12 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
         show_unobserved: 是否显示不可见部分（红色虚线）
     """
     
-    # 设置图表样式 - 支持中文显示和增大字体
+    # 设置图表样式 - 支持中文显示
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
     plt.rcParams['axes.unicode_minus'] = False
-    plt.rcParams['font.size'] = 14  # 全局字体大小
-    plt.rcParams['axes.titlesize'] = 18  # 标题字体大小
-    plt.rcParams['axes.labelsize'] = 16  # 坐标轴标签字体大小
-    plt.rcParams['xtick.labelsize'] = 14  # x轴刻度标签字体大小
-    plt.rcParams['ytick.labelsize'] = 14  # y轴刻度标签字体大小
-    plt.rcParams['legend.fontsize'] = 14  # 图例字体大小
     
-    fig, ax = plt.subplots(figsize=(12, 8))
+    # 修改为正方形图表
+    fig, ax = plt.subplots(figsize=(8, 8))
     
     # 限制时间范围并按时间排序
     df = df[(df['time'] >= start_frame) & (df['time'] <= end_frame)].copy()
@@ -108,14 +103,14 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     for i, segment in enumerate(segments):
         if segment['observed'] and show_observed:
             # 可见部分：蓝色点和蓝色实线，label='可见段' if '可见段' not in ax.get_legend_handles_labels()[1] else '',
-            ax.plot(segment['times'], segment['speeds'], 'b-', linewidth=1.5,
+            ax.plot(segment['times'], segment['speeds'], 'b-', linewidth=1,
                    
                    zorder=3)
             ax.scatter(segment['times'], segment['speeds'], c='blue', s=5, marker='o',
                       zorder=4)
         elif not segment['observed'] and show_unobserved:
             # 不可见部分：红色虚线，label='不可见段' if '不可见段' not in ax.get_legend_handles_labels()[1] else '',
-            ax.plot(segment['times'], segment['speeds'], 'r--', linewidth=1.5, 
+            ax.plot(segment['times'], segment['speeds'], 'r--', linewidth=1, 
                    
                    zorder=2)
         
@@ -130,23 +125,24 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
             if next_start_time > current_end_time:
                 ax.plot([current_end_time, next_start_time], 
                        [current_end_speed, next_start_speed], 
-                       'r--', linewidth=1.5, zorder=2)
+                       'r--', linewidth=1, zorder=2)
     
     # 设置图表属性
-    ax.set_xlabel('相对时间(s)', fontsize=16)
-    ax.set_ylabel('实时速度', fontsize=16)
-    ax.set_title(f'可见状态下的速度特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=18, fontweight='bold')
+    ax.set_xlabel('相对时间(s)', fontsize=12)
+    ax.set_ylabel('实时速度', fontsize=12)
+    ax.set_title(f'可见状态下的速度特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=14, fontweight='bold')
     ax.set_xlim(start_frame, end_frame)
-    # 设置y轴范围为-5到60，但只显示0-50的刻度
-    ax.set_ylim(-5, 60)
-    ax.set_yticks(range(0, 51, 10))  # 0, 10, 20, 30, 40, 50
     
-    # 增大坐标轴刻度标签
-    ax.tick_params(axis='both', which='major', labelsize=14, width=2, length=6)
-    ax.tick_params(axis='both', which='minor', labelsize=12, width=1, length=4)
+    # 设置y轴范围为-5到55，但只显示0到50的刻度
+    ax.set_ylim(-5, 55)
+    ax.set_yticks([0, 20, 40])
+    ax.set_xticks([100,200,300,400,500])
+    
+    # 设置坐标轴刻度标签字体大小为原来的两倍
+    ax.tick_params(axis='both', which='major', labelsize=30)
     
     ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax.legend(loc='best', fontsize=14)
+    ax.legend(loc='best', fontsize=10)
     
     # 保存图表
     plt.tight_layout()
@@ -157,7 +153,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 79
+    NODE_ID = 108
     
     # 显示选项（True=显示，False=隐藏）
     SHOW_INTERPOLATED = False    # 插值数据（灰色虚线）
@@ -168,13 +164,13 @@ def main():
     # 文件路径
     lane_stats_path = '../data/draw/d210191000/d210291000_lane_node_stats.csv'
     node_mask_path = '../data/draw/d210191000/d210291000_node_mask.csv'
-    interpolated_data_path = '../data/draw/d210191000/interpolated_data_2.csv' #其实还是用原来的没有_2的版本，已经废了
+    interpolated_data_path = '../data/draw/d210191000/interpolated_data.csv'
     additional_data_path = '../data/draw/d210191000/inference_results.csv'
     
     output_path = f'../data/draw/d210191000/missing/node{NODE_ID}_speed_visibility.png'
 
-    start_frame = 250 #5
-    end_frame = 600 #824
+    start_frame = 100 #5
+    end_frame = 500 #824
     
     # 1. 加载数据
     print("加载数据...")

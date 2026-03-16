@@ -94,7 +94,7 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 9
+    NODE_ID = 71
     
     # 时间范围
     start_frame = 30 #30
@@ -139,9 +139,9 @@ def main():
         {
             'file_path': '../data/draw/fintuned/minhang_inference_results_finetuned.csv',
             'label': '多方向多周期微调',
-            'color': 'black',
-            'linestyle': '-',
-            'linewidth': 1,
+            'color': 'red',
+            'linestyle': '--',
+            'linewidth': 1.5,
             'alpha': 1,
             'value_column': 'avg_speed'
         },
@@ -150,10 +150,10 @@ def main():
         {
             'file_path': '../data/draw/fintuned/k0127085203_0001_lane_node_state.csv',
             'label': '真值',
-            'color': 'red',
-            'linestyle': '--',
+            'color': 'black',
+            'linestyle': '-',
             'linewidth': 1,
-            'alpha': 0.8,
+            'alpha': 1,
             'value_column': 'avg_speed'  # 数据列名
         }
     ]

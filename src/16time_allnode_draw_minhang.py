@@ -29,6 +29,8 @@ def main():
     # 输入文件路径
     base_shp = os.path.join(project_root, "plots/buffer/minhang.shp")
     csv_file = os.path.join(project_root, "data/draw/minhang/k0127085212_0001_test.csv")
+    #"data/draw/fintuned/minhang_inference_finetuned_only.csv"
+    #"data/draw/minhang/k0127085203_0001_lane_node_state.csv"
     
     # 输出目录
     output_dir = os.path.join(project_root, "plots/map_minhang/k01270852_318")
