@@ -40,11 +40,33 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
         ylabel: str，y轴标签
     """
     
-    # 设置图表样式 - 支持中文显示
+    # 设置图表样式 - 中文使用黑体，英文和数字使用 Times New Roman
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
+    plt.rcParams['font.serif'] = ['Times New Roman', 'SimSun']
+    plt.rcParams['font.family'] = ['serif']  # 使用衬线字体
     plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['font.size'] = 32  # 全局字体大小
+    plt.rcParams['axes.titlesize'] = 42  # 标题字体大小
+    plt.rcParams['axes.labelsize'] = 38  # 坐标轴标签字体大小
+    plt.rcParams['xtick.labelsize'] = 34  # x轴刻度标签字体大小
+    plt.rcParams['ytick.labelsize'] = 34  # y轴刻度标签字体大小
+    plt.rcParams['xtick.major.size'] = 12  # x轴主刻度线长度
+    plt.rcParams['ytick.major.size'] = 12  # y轴主刻度线长度
+    plt.rcParams['xtick.major.width'] = 3  # x轴主刻度线宽度
+    plt.rcParams['ytick.major.width'] = 3  # y轴主刻度线宽度
+    plt.rcParams['axes.linewidth'] = 2.5  # 坐标轴边框宽度
+    plt.rcParams['axes.titlepad'] = 25  # 标题与图表的间距
+    plt.rcParams['axes.labelpad'] = 20  # 坐标轴标签与图表的间距
     
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # 导入字体属性模块用于混合字体
+    from matplotlib import font_manager
+    from matplotlib.font_manager import FontProperties
+    
+    # 创建字体属性：中文用黑体，英文用 Times New Roman
+    font_chinese = FontProperties(family='SimHei', size=42, weight='bold')
+    font_english = FontProperties(family='Times New Roman', size=38, weight='bold')
+    
+    fig, ax = plt.subplots(figsize=(18, 11))
     
     # 绘制每条曲线
     for config in data_configs:
@@ -53,6 +75,10 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
         # 限制时间范围并按时间排序
         df = df[(df['time'] >= start_frame) & (df['time'] <= end_frame)].copy()
         df = df.sort_values('time')
+        
+        # 将速度从 km/h 转换为 m/s (除以 3.6)
+        if 'avg_speed' in df.columns:
+            df['avg_speed'] = df['avg_speed'] / 3.6
         
         if len(df) == 0:
             print(f"警告：{config['label']} 数据为空，跳过绘制")
@@ -74,16 +100,48 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
               f"速度范围 {df['avg_speed'].min():.2f}-{df['avg_speed'].max():.2f}")
     
     # 设置图表属性
-    ax.set_xlabel(xlabel, fontsize=12)
-    ax.set_ylabel(ylabel, fontsize=12)
+    # 使用 Times New Roman 字体
+    ax.set_xlabel('Time (s)', fontsize=38, fontweight='bold', labelpad=20, family='Times New Roman')
+    ax.set_ylabel('Speed (m/s)', fontsize=38, fontweight='bold', labelpad=20, family='Times New Roman')
     
     if title is None:
         title = f'速度特征变化曲线对比 (节点{node_id})'
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    ax.set_title(title, fontsize=42, fontweight='bold', pad=25, fontproperties=font_chinese)
     
     ax.set_xlim(start_frame, end_frame)
-    ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax.legend(loc='best', fontsize=10)
+    # 设置y轴范围：转换为 m/s
+    ax.set_ylim(-1, 12)
+    ax.set_yticks(range(0, 14, 3))  # 0, 3, 6, 9, 12
+    
+    # 设置刻度标签使用 Times New Roman
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(FontProperties(family='Times New Roman', size=34))
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(FontProperties(family='Times New Roman', size=34))
+    
+    # 增大坐标轴刻度标签和刻度线
+    ax.tick_params(axis='both', which='major', labelsize=34, width=3, length=12, pad=12)
+    ax.tick_params(axis='both', which='minor', labelsize=28, width=2, length=8, pad=10)
+    
+    # 增粗坐标轴边框
+    for spine in ax.spines.values():
+        spine.set_linewidth(2.5)
+    
+    ax.grid(True, alpha=0.3, linestyle=':', linewidth=1.0)
+    
+    # 添加图例 - 普通框，放在图表外面右侧
+    legend = ax.legend(
+        loc='center left',
+        bbox_to_anchor=(1.02, 0.5),  # 放在图表右侧外面
+        fontsize=28,
+        frameon=True,  # 显示边框
+        edgecolor='black',  # 边框颜色
+        fancybox=False,  # 不使用圆角
+        shadow=False,  # 不使用阴影
+        framealpha=1.0,  # 背景不透明
+        prop=FontProperties(family='SimHei', size=28)  # 使用黑体显示中文
+    )
+    legend.get_frame().set_linewidth(2.0)  # 设置边框宽度
     
     # 保存图表
     plt.tight_layout()
@@ -94,7 +152,7 @@ def plot_multiple_curves(data_configs, node_id, output_path, start_frame=5, end_
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 71
+    NODE_ID = 9
     
     # 时间范围
     start_frame = 30 #30
@@ -119,12 +177,21 @@ def main():
     '''
     curve_configs = [
         {
-            'file_path': '../data/draw/fintuned/minhang_inference_results_L1L2L3.csv',
-            'label': '零样本迁移',
-            'color': 'purple',
+            'file_path': '../data/draw/fintuned/k0127085203_0001_lane_node_state.csv',
+            'label': '真值',
+            'color': 'black',
+            'linestyle': '-',
+            'linewidth': 1.5,
+            'alpha': 1,
+            'value_column': 'avg_speed'  # 数据列名
+        },
+        {
+            'file_path': '../data/draw/fintuned/minhang_inference_results_finetuned.csv',
+            'label': '多方向多周期微调',
+            'color': 'red',
             'linestyle': '--',
-            'linewidth': 1,
-            'alpha': 0.4,
+            'linewidth': 2.0,
+            'alpha': 1,
             'value_column': 'avg_speed'
         },
         {
@@ -132,29 +199,18 @@ def main():
             'label': '单方向单周期微调',
             'color': 'green',
             'linestyle': '--',
-            'linewidth': 1,
+            'linewidth': 1.5,
             'alpha': 0.4,
             'value_column': 'avg_speed'
         },
         {
-            'file_path': '../data/draw/fintuned/minhang_inference_results_finetuned.csv',
-            'label': '多方向多周期微调',
-            'color': 'red',
+            'file_path': '../data/draw/fintuned/minhang_inference_results_L1L2L3.csv',
+            'label': '零样本迁移',
+            'color': 'purple',
             'linestyle': '--',
             'linewidth': 1.5,
-            'alpha': 1,
+            'alpha': 0.4,
             'value_column': 'avg_speed'
-        },
-
-
-        {
-            'file_path': '../data/draw/fintuned/k0127085203_0001_lane_node_state.csv',
-            'label': '真值',
-            'color': 'black',
-            'linestyle': '-',
-            'linewidth': 1,
-            'alpha': 1,
-            'value_column': 'avg_speed'  # 数据列名
         }
     ]
     
@@ -231,8 +287,8 @@ def main():
         end_frame=end_frame,
         dpi=300,
         title=None,  # 使用默认标题
-        xlabel='相对时间(s)',
-        ylabel='实时速度'
+        xlabel='Time (s)',
+        ylabel='Speed (m/s)'
     )
     
     print("\n完成!")

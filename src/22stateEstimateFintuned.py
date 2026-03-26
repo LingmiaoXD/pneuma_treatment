@@ -242,12 +242,39 @@ def plot_state_timeline(state_configs, node_id, output_path, start_frame=5, end_
         figsize: 图像大小
         title: 图表标题
     """
-    # 设置中文字体
+    # 设置图表样式 - 中文使用黑体，英文和数字使用 Times New Roman
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
+    plt.rcParams['font.serif'] = ['Times New Roman', 'SimSun']
+    plt.rcParams['font.family'] = ['serif']  # 使用衬线字体
     plt.rcParams['axes.unicode_minus'] = False
+    plt.rcParams['font.size'] = 32  # 全局字体大小
+    plt.rcParams['axes.titlesize'] = 42  # 标题字体大小
+    plt.rcParams['axes.labelsize'] = 38  # 坐标轴标签字体大小
+    plt.rcParams['xtick.labelsize'] = 34  # x轴刻度标签字体大小
+    plt.rcParams['ytick.labelsize'] = 34  # y轴刻度标签字体大小
+    plt.rcParams['xtick.major.size'] = 12  # x轴主刻度线长度
+    plt.rcParams['ytick.major.size'] = 12  # y轴主刻度线长度
+    plt.rcParams['xtick.major.width'] = 3  # x轴主刻度线宽度
+    plt.rcParams['ytick.major.width'] = 3  # y轴主刻度线宽度
+    plt.rcParams['axes.linewidth'] = 2.5  # 坐标轴边框宽度
+    plt.rcParams['axes.titlepad'] = 25  # 标题与图表的间距
+    plt.rcParams['axes.labelpad'] = 20  # 坐标轴标签与图表的间距
+    
+    # 导入字体属性模块用于混合字体
+    from matplotlib import font_manager
+    from matplotlib.font_manager import FontProperties
+    
+    # 创建字体属性：中文用黑体，英文用 Times New Roman
+    font_chinese = FontProperties(family='SimHei', size=42, weight='bold')
+    font_english = FontProperties(family='Times New Roman', size=38, weight='bold')
     
     n_configs = len(state_configs)
-    fig, ax = plt.subplots(figsize=figsize)
+    # 图表区域保持2:1的宽高比，图例在右侧外部
+    # 计算合适的图表高度，并增加1.5倍
+    plot_height = max(8, n_configs * 1.2) * 1.1  # 根据数据条数调整高度，增加1.5倍
+    plot_width = plot_height * 2  # 保持2:1宽高比
+    
+    fig, ax = plt.subplots(figsize=(plot_width + 6, plot_height))  # 额外增加6英寸宽度给图例（也按比例增加）
     
     # 每个配置占据的高度
     bar_height = 0.6  # 增加条带高度到0.6
@@ -286,21 +313,34 @@ def plot_state_timeline(state_configs, node_id, output_path, start_frame=5, end_
                                      facecolor=color, edgecolor='none')
             ax.add_patch(rect)
         
-        # 添加标签
+        # 添加标签 - 使用更大的字体
         ax.text(start_frame - (end_frame - start_frame) * 0.02, y_pos, label,
-               ha='right', va='center', fontsize=11, fontweight='bold')
+               ha='right', va='center', fontsize=28, fontweight='bold',
+               fontproperties=FontProperties(family='SimHei', size=28, weight='bold'))
     
     # 设置坐标轴
     ax.set_xlim(start_frame, end_frame)
     ax.set_ylim(-0.5, n_configs - 0.5)
-    ax.set_xlabel('相对时间(s)', fontsize=12)
+    ax.set_xlabel('Time (s)', fontsize=38, fontweight='bold', labelpad=20, family='Times New Roman')
     ax.set_yticks([])
+    
+    # 设置刻度标签使用 Times New Roman
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(FontProperties(family='Times New Roman', size=34))
+    
+    # 增大坐标轴刻度标签和刻度线
+    ax.tick_params(axis='x', which='major', labelsize=34, width=3, length=12, pad=12)
+    ax.tick_params(axis='x', which='minor', labelsize=28, width=2, length=8, pad=10)
+    
+    # 增粗坐标轴边框
+    for spine in ax.spines.values():
+        spine.set_linewidth(2.5)
     
     if title is None:
         title = f'交通状态时间线对比 (节点{node_id})'
-    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    ax.set_title(title, fontsize=42, fontweight='bold', pad=25, fontproperties=font_chinese)
     
-    # 添加图例
+    # 添加图例 - 放置在图表右侧外部
     legend_elements = [mpatches.Patch(facecolor=STATE_COLORS[state], 
                                      label=STATE_NAMES[state])
                       for state in [TrafficState.FREE_FLOW, 
@@ -309,11 +349,15 @@ def plot_state_timeline(state_configs, node_id, output_path, start_frame=5, end_
                                    TrafficState.SATURATED,
                                    TrafficState.QUEUED,
                                    TrafficState.UNKNOWN]]
-    ax.legend(handles=legend_elements, loc='upper right', 
-             bbox_to_anchor=(1.15, 1), fontsize=10)
+    legend = ax.legend(handles=legend_elements, loc='center left', 
+                      bbox_to_anchor=(1.02, 0.5), fontsize=24, frameon=True, 
+                      shadow=True, fancybox=True, borderaxespad=0)
+    # 设置图例文字字体
+    for text in legend.get_texts():
+        text.set_fontproperties(FontProperties(family='SimHei', size=24))
     
     # 网格
-    ax.grid(True, axis='x', alpha=0.3, linestyle=':', linewidth=0.5)
+    ax.grid(True, axis='x', alpha=0.3, linestyle=':', linewidth=1.0)
     
     # 保存
     plt.tight_layout()

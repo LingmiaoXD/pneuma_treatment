@@ -45,17 +45,33 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
         show_unobserved: 是否显示不可见部分（红色虚线）
     """
     
-    # 设置图表样式 - 支持中文显示和增大字体
+    # 设置图表样式 - 中文使用黑体，英文和数字使用 Times New Roman
     plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'SimSun', 'Arial Unicode MS', 'DejaVu Sans']
+    plt.rcParams['font.serif'] = ['Times New Roman', 'SimSun']
+    plt.rcParams['font.family'] = ['serif']  # 使用衬线字体
     plt.rcParams['axes.unicode_minus'] = False
-    plt.rcParams['font.size'] = 14  # 全局字体大小
-    plt.rcParams['axes.titlesize'] = 18  # 标题字体大小
-    plt.rcParams['axes.labelsize'] = 16  # 坐标轴标签字体大小
-    plt.rcParams['xtick.labelsize'] = 14  # x轴刻度标签字体大小
-    plt.rcParams['ytick.labelsize'] = 14  # y轴刻度标签字体大小
-    plt.rcParams['legend.fontsize'] = 14  # 图例字体大小
+    plt.rcParams['font.size'] = 32  # 全局字体大小
+    plt.rcParams['axes.titlesize'] = 42  # 标题字体大小
+    plt.rcParams['axes.labelsize'] = 38  # 坐标轴标签字体大小
+    plt.rcParams['xtick.labelsize'] = 34  # x轴刻度标签字体大小
+    plt.rcParams['ytick.labelsize'] = 34  # y轴刻度标签字体大小
+    plt.rcParams['xtick.major.size'] = 12  # x轴主刻度线长度
+    plt.rcParams['ytick.major.size'] = 12  # y轴主刻度线长度
+    plt.rcParams['xtick.major.width'] = 3  # x轴主刻度线宽度
+    plt.rcParams['ytick.major.width'] = 3  # y轴主刻度线宽度
+    plt.rcParams['axes.linewidth'] = 2.5  # 坐标轴边框宽度
+    plt.rcParams['axes.titlepad'] = 25  # 标题与图表的间距
+    plt.rcParams['axes.labelpad'] = 20  # 坐标轴标签与图表的间距
     
-    fig, ax = plt.subplots(figsize=(12, 8))
+    # 导入字体属性模块用于混合字体
+    from matplotlib import font_manager
+    from matplotlib.font_manager import FontProperties
+    
+    # 创建字体属性：中文用黑体，英文用 Times New Roman
+    font_chinese = FontProperties(family='SimHei', size=42, weight='bold')
+    font_english = FontProperties(family='Times New Roman', size=38, weight='bold')
+    
+    fig, ax = plt.subplots(figsize=(18, 11))
     
     # 限制时间范围并按时间排序
     df = df[(df['time'] >= start_frame) & (df['time'] <= end_frame)].copy()
@@ -64,6 +80,14 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
     interpolated_df = interpolated_df.sort_values('time')
     additional_df = additional_df[(additional_df['time'] >= start_frame) & (additional_df['time'] <= end_frame)].copy()
     additional_df = additional_df.sort_values('time')
+    
+    # 将速度从 km/h 转换为 m/s (除以 3.6)
+    if len(df) > 0 and 'avg_speed' in df.columns:
+        df['avg_speed'] = df['avg_speed'] / 3.6
+    if len(interpolated_df) > 0 and 'avg_speed' in interpolated_df.columns:
+        interpolated_df['avg_speed'] = interpolated_df['avg_speed'] / 3.6
+    if len(additional_df) > 0 and 'avg_speed' in additional_df.columns:
+        additional_df['avg_speed'] = additional_df['avg_speed'] / 3.6
     
     # 首先绘制插值数据（灰色虚线，在最下层）
     if show_interpolated and len(interpolated_df) > 0:
@@ -133,20 +157,32 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
                        'r--', linewidth=1.5, zorder=2)
     
     # 设置图表属性
-    ax.set_xlabel('相对时间(s)', fontsize=16)
-    ax.set_ylabel('实时速度', fontsize=16)
-    ax.set_title(f'可见状态下的速度特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=18, fontweight='bold')
+    # 使用 Times New Roman 字体
+    ax.set_xlabel('Time (s)', fontsize=38, fontweight='bold', labelpad=20, family='Times New Roman')
+    ax.set_ylabel('Speed (m/s)', fontsize=38, fontweight='bold', labelpad=20, family='Times New Roman')
+    ax.set_title(f'可见状态下的速度特征变化曲线 (节点{df["node_id"].iloc[0] if len(df) > 0 else "N/A"})', fontsize=42, fontweight='bold', pad=25, fontproperties=font_chinese)
     ax.set_xlim(start_frame, end_frame)
-    # 设置y轴范围为-5到60，但只显示0-50的刻度
-    ax.set_ylim(-5, 60)
-    ax.set_yticks(range(0, 51, 10))  # 0, 10, 20, 30, 40, 50
+    # 设置y轴范围：原来是0-50 km/h，转换为 m/s 约为 0-14 m/s
+    ax.set_ylim(-1, 16)
+    ax.set_yticks(range(0, 16, 3))  # 0, 3, 6, 9, 12
     
-    # 增大坐标轴刻度标签
-    ax.tick_params(axis='both', which='major', labelsize=14, width=2, length=6)
-    ax.tick_params(axis='both', which='minor', labelsize=12, width=1, length=4)
+    # 设置刻度标签使用 Times New Roman
+    for label in ax.get_xticklabels():
+        label.set_fontproperties(FontProperties(family='Times New Roman', size=34))
+    for label in ax.get_yticklabels():
+        label.set_fontproperties(FontProperties(family='Times New Roman', size=34))
     
-    ax.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax.legend(loc='best', fontsize=14)
+    # 增大坐标轴刻度标签和刻度线
+    ax.tick_params(axis='both', which='major', labelsize=34, width=3, length=12, pad=12)
+    ax.tick_params(axis='both', which='minor', labelsize=28, width=2, length=8, pad=10)
+    
+    # 增粗坐标轴边框
+    for spine in ax.spines.values():
+        spine.set_linewidth(2.5)
+    
+    ax.grid(True, alpha=0.3, linestyle=':', linewidth=1.0)
+    # 移除图例
+    # ax.legend(loc='best', fontsize=20, frameon=True, shadow=True, fancybox=True)
     
     # 保存图表
     plt.tight_layout()
@@ -157,7 +193,7 @@ def plot_speed_with_visibility(df, interpolated_df, additional_df, output_path, 
 def main():
     # ========== 配置参数 ==========
     # 节点ID（修改此处以分析不同节点）
-    NODE_ID = 79
+    NODE_ID = 42
     
     # 显示选项（True=显示，False=隐藏）
     SHOW_INTERPOLATED = False    # 插值数据（灰色虚线）
